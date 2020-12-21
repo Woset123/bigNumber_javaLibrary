@@ -66,6 +66,7 @@ public class BigNumber {
     /**
      * Big Number Constructor
      * String value given in input
+     * Radix 10 !!
      * @param val
      */
     public BigNumber(String val) {
@@ -126,6 +127,7 @@ public class BigNumber {
     /**
      * Big Number Constructor
      * Array of 32 bits Integer given in input
+     * Radix 10 !!
      * @param value
      */
     private BigNumber(int[] value) {
@@ -190,6 +192,17 @@ public class BigNumber {
      * @return
      */
     public BigNumber mul(BigNumber bigNumber) { return new BigNumber(mul(this.value, bigNumber.getValue())); }
+
+
+    /**
+     * Montgomery Multiplication of two Big Numbers
+     * @param bigNumber
+     * @return
+     */
+    public BigNumber mulMontgomery(BigNumber bigNumber) { return new BigNumber(mulMontgomery(this.value, bigNumber.getValue()));}
+
+
+/****************************************************************************/
 
 
     /**
@@ -412,6 +425,9 @@ public class BigNumber {
         return bg.getValue();
     }
 
+    /** Implements mod function : input = a,n | return a mod n **/
+    //public int[] mod
+
 
     /**
      * Multiplication of two Arrays of 32 bits Integer
@@ -450,6 +466,34 @@ public class BigNumber {
             }
         }
         return temp;
+    }
+
+    /** (In progress)
+     * Montgomery Multiplication of two Arrays of 32 bits Integer
+     * Used for performance enhancement
+     * Algorithm :
+     * 1. s = A * B
+     * 2. t = (s * v) mod r
+     * 3. m = (s + (t * n))
+     * 4. u = m/r
+     * 5. if u >= n then return u - n | else return u
+     * @param a
+     * @param b
+     * @return Montgomery Multiplication value into Arrays of 32 bits Integer
+     */
+    public int[] mulMontgomery(int[] a, int[] b) {
+
+        /** Defining variables **/
+        BigNumber n = new BigNumber(); // paste the value from magmacalculator for example
+        BigNumber v = new BigNumber();
+
+        /** Step 1 **/
+        int[] s = mul(a,b);
+
+        /** Step 2 **/
+        //int[] t = mo
+
+        return new int[1];
     }
 
     /**
