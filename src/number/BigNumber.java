@@ -335,8 +335,8 @@ public class BigNumber {
 
     /**
      * Substract of two Arrays of 32 bits Integer
-     * @param x
-     * @param y
+     * @param big
+     * @param small
      * @return substracted value into Arrays of 32 bits Integer
      */
     public int[] substract(int[] big, int[] small) {
