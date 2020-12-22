@@ -137,6 +137,10 @@ public class BigNumber {
         this.strValue = toString(this.value);
     }
 
+
+    /** Constant BigNumbers for Montgomery Multiplication **/
+    public static final BigNumber MGY_V = new BigNumber("123");
+
     /**
      * Sum of two Big Numbers
      * Create a new Big Number whose value is
@@ -200,6 +204,15 @@ public class BigNumber {
      * @return
      */
     public BigNumber mulMontgomery(BigNumber bigNumber) { return new BigNumber(mulMontgomery(this.value, bigNumber.getValue()));}
+
+
+    /**
+     * Division of two Big Numbers
+     * Value stored into the Array of 32 bits Integer
+     * @param bigNumber
+     * @return
+     */
+    public BigNumber div(BigNumber bigNumber) { return new BigNumber(div(this.value, bigNumber.getValue())); }
 
 
 /****************************************************************************/
@@ -397,6 +410,19 @@ public class BigNumber {
     public int[] modularSub(int[] x, int[] y, int[] mod) {
 
         BigNumber bg = new BigNumber(substract(x,y));
+        return mod(bg.getValue(), mod);
+    }
+
+
+    /**
+     * Implements mod function
+     * @param a
+     * @param mod
+     * @return a mod n
+     */
+    public int[] mod(int[] a, int[] mod) {
+
+        BigNumber bg = new BigNumber(a);
 
         /** Sum greater than mod **/
         if (bg.compareValue(mod)==1) {
@@ -424,9 +450,6 @@ public class BigNumber {
 
         return bg.getValue();
     }
-
-    /** Implements mod function : input = a,n | return a mod n **/
-    //public int[] mod
 
 
     /**
@@ -484,17 +507,44 @@ public class BigNumber {
     public int[] mulMontgomery(int[] a, int[] b) {
 
         /** Defining variables **/
+        BigNumber r = new BigNumber(); // paste the value from magmacalculator for example
         BigNumber n = new BigNumber(); // paste the value from magmacalculator for example
-        BigNumber v = new BigNumber();
+        BigNumber u = new BigNumber();
 
         /** Step 1 **/
         int[] s = mul(a,b);
 
         /** Step 2 **/
-        //int[] t = mo
+        int[] t = modularSub(s, MGY_V.value,r.getValue());
+
+        /** Step 3 **/
+        int[] m = add(s,mul(t,n.getValue()));
+
+        /** Step 4 **/
+        //Implements division
+        //u.value =
+
+        /** Step 5 **/
+        // u >= n
+        if (u.compareValue(n.getValue())>-1) {
+            return substract(u.value, n.value);
+        }
+        else {
+            return u.value;
+        }
+    }
+
+    /** (In progress)
+     * Division of two arrays of 32 bits Integer
+     * @param a
+     * @param b
+     * @return
+     */
+    public int[] div(int[] a, int[] b) {
 
         return new int[1];
     }
+
 
     /**
      * Compare value array of two Big Numbers
