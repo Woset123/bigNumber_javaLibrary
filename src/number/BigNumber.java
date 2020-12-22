@@ -139,7 +139,9 @@ public class BigNumber {
 
 
     /** Constant BigNumbers for Montgomery Multiplication **/
-    public static final BigNumber MGY_V = new BigNumber("123");
+    public static final BigNumber MGY_N = new BigNumber("123");
+    public static final BigNumber MGY_R = new BigNumber(pickRMontgomeryMul(MGY_N.getValue()));
+    public static final BigNumber MGY_V = new BigNumber();
 
     /**
      * Sum of two Big Numbers
@@ -467,7 +469,7 @@ public class BigNumber {
             x = y;
             y = temp;
         }
-        int[] temp = new int[x.length + y.length-1];
+        int[] temp = new int[x.length + y.length];
         int xCursor = x.length-1;
         int yCursor = y.length-1;
         long product = 0;
@@ -495,43 +497,63 @@ public class BigNumber {
      * Montgomery Multiplication of two Arrays of 32 bits Integer
      * Used for performance enhancement
      * Algorithm :
-     * 1. s = A * B
-     * 2. t = (s * v) mod r
-     * 3. m = (s + (t * n))
-     * 4. u = m/r
-     * 5. if u >= n then return u - n | else return u
+     *
+     * Let c = a.b mod N with a,b,N 1024 bits, and C its Montgomery representation
+     * Pick R = 2^k with 2^(k-1) <= N <= 2^k
+     * Let V = - N^(-1) mod R
+     *
+     * Let A and B be the Montgomery representations of a and b as this :
+     * A = a.R mod N
+     * B = b.R mod N
+     *
+     * C = A.B.R^(-1) mod N = T.R^(-1) mod N = (T + T.V.N)/R mod N
+     *
+     * Finally,
+     * c = C.R^(-1) mod N = (T + T.V.N)/R mod N = a.b mod N
+     *
+     * /!\ N has a default value !!
      * @param a
      * @param b
      * @return Montgomery Multiplication value into Arrays of 32 bits Integer
      */
     public int[] mulMontgomery(int[] a, int[] b) {
 
-        /** Defining variables **/
-        BigNumber r = new BigNumber(); // paste the value from magmacalculator for example
-        BigNumber n = new BigNumber(); // paste the value from magmacalculator for example
-        BigNumber u = new BigNumber();
+        /** A and B Montgomery Representations **/
+        // A = a.R mod N
+        int[] A = mod(mul(a, MGY_R.getValue()), MGY_N.getValue());
+        // B = b.R mod N
+        int[] B = mod(mul(b,MGY_R.getValue()), MGY_N.getValue());
 
-        /** Step 1 **/
-        int[] s = mul(a,b);
+        /** Calculate V = - N^(-1) mod R **/
+        int[] invN = modInverse();
 
-        /** Step 2 **/
-        int[] t = modularSub(s, MGY_V.value,r.getValue());
+        /** C Montgomery Representation **/
+        // C = A.B.R^(-1) mod N = (A.B + A.B.V.N) / R mod N
+        //int[] C =
 
-        /** Step 3 **/
-        int[] m = add(s,mul(t,n.getValue()));
+        /** c Calculation **/
+        int[] c = new int[1];
 
-        /** Step 4 **/
-        //Implements division
-        //u.value =
+       return c;
+    }
 
-        /** Step 5 **/
-        // u >= n
-        if (u.compareValue(n.getValue())>-1) {
-            return substract(u.value, n.value);
-        }
-        else {
-            return u.value;
-        }
+    /** (In progress)
+     * To pick the right value for R
+     * in the Montgomery Multiplication
+     * @param n
+     * @return
+     */
+    private static int[] pickRMontgomeryMul(int[] n) {
+
+        return new int[1];
+    }
+
+    /** (In progress)
+     * Use the Extended Euclide Algorithm
+     * @return
+     */
+    public int[] modInverse() {
+        return new int[1];
     }
 
     /** (In progress)
@@ -634,6 +656,13 @@ public class BigNumber {
     public int numberDigitsMultiplication(int x, int y) {
         return (int) Math.floor(Math.log10(x) + Math.log10(y)) +1;
     }
+
+
+    /** (In progress)
+     * Pre-calculated values for 2^k
+     * Used for Montgomery Multiplication
+     */
+    private static int[] preCalculatedR[] = {null};
 
 
     /**
