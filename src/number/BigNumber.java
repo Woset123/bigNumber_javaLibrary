@@ -1,6 +1,8 @@
 package number;
 
 
+import java.math.BigInteger;
+
 public class BigNumber {
 
 
@@ -50,6 +52,28 @@ public class BigNumber {
      */
     final long SUPER_RADIX = 1000000000;
 
+    /****************************************************************************/
+
+    /**
+     * Pre-calculated values for 2^k
+     * Used for Montgomery Multiplication
+     * 0 -> null
+     * 1 -> null
+     * 2 -> 2¹⁰²²
+     * 3 -> 2¹⁰²³
+     * 4 -> 2¹⁰²⁴
+     * 5 -> 2¹⁰²⁵
+     * 6 -> 2¹⁰²⁶
+     */
+    private static int[] preCalculatedR[] = {
+            null,
+            null,
+            {44,942328371,557897693,232629769,725618340,449424473,557664318,357520289,433168951,375240783,177119330,601884005,280028469,967848339,414697442,203604155,623211857,659868531,94441973,356216371,319075554,900311523,529863270,738021251,442209537,670585615,720368478,277635206,809290837,627671146,574559986,811484619,929076208,839082406,56034304},
+            {89,884656743,115795386,465259539,451236680,898848947,115328636,715040578,866337902,750481566,354238661,203768010,560056939,935696678,829394884,407208311,246423715,319737062,188883946,712432742,638151109,800623047,59726541,476042502,884419075,341171231,440736956,555270413,618581675,255342293,149119973,622969239,858152417,678164812,112068608},
+            {179,769313486,231590772,930519078,902473361,797697894,230657273,430081157,732675805,500963132,708477322,407536021,120113879,871393357,658789768,814416622,492847430,639474124,377767893,424865485,276302219,601246094,119453082,952085005,768838150,682342462,881473913,110540827,237163350,510684586,298239947,245938479,716304835,356329624,224137216},
+            {359,538626972,463181545,861038157,804946723,595395788,461314546,860162315,465351611,1926265,416954644,815072042,240227759,742786715,317579537,628833244,985694861,278948248,755535786,849730970,552604439,202492188,238906165,904170011,537676301,364684925,762947826,221081654,474326701,21369172,596479894,491876959,432609670,712659248,448274432},
+            {719,77253944,926363091,722076315,609893447,190791576,922629093,720324630,930703222,3852530,833909289,630144084,480455519,485573430,635159075,257666489,971389722,557896497,511071573,699461941,105208878,404984376,477812331,808340023,75352602,729369851,525895652,442163308,948653402,42738345,192959788,983753918,865219341,425318496,896548864}
+    };
 
     /****************************************************************************/
 
@@ -74,8 +98,15 @@ public class BigNumber {
         /** If input empty **/
         if (val.length() == 0)
             throw new NumberFormatException("Zero length !!");
+        createStack(val);
 
+    }
 
+    /**
+     * Shapes the stacks based on the String given in input
+     * @param val
+     */
+    public void createStack(String val) {
         /** Erase spaces **/
         val =val.replaceAll("\\s+", "");
 
@@ -93,8 +124,8 @@ public class BigNumber {
          */
         this.nbBits = (int) (Math.ceil(((float) (this.nbDigits * Math.log(10) / Math.log(2))))+1);
 
-        /** Number of 16bits words necessary **/
-        this.nbWords = (int) (Math.ceil(((float) (this.nbBits) / (float) (WORD_SIZE))));
+        /** Number of 32bits words necessary **/
+        this.nbWords = (int) (Math.ceil(((float) (this.nbBits) / (float) (WORD_SIZE)))+2);
 
         /** Words creation **/
         this.value = new int[this.nbWords];
@@ -120,6 +151,13 @@ public class BigNumber {
             value[i++] = stackValue;
         }
 
+        /** Check if size array too big **/
+        if (i<nbWords) {
+            int[] smaller = new int[i];
+            System.arraycopy(value, 0, smaller,0,i);
+            this.value = smaller;
+        }
+
         this.strValue = toString(this.value);
     }
 
@@ -132,9 +170,12 @@ public class BigNumber {
      */
     private BigNumber(int[] value) {
 
-        this.nbWords = value.length;
         this.value = value;
         this.strValue = toString(this.value);
+
+        /** Recreate the stack to be sure there are 9 digits stacks **/
+        createStack(this.strValue);
+        this.nbWords = this.value.length;
     }
 
 
@@ -449,7 +490,6 @@ public class BigNumber {
         if (bg.compareValue(mod)==0) {
             return new int[1];
         }
-
         return bg.getValue();
     }
 
@@ -525,11 +565,11 @@ public class BigNumber {
         int[] B = mod(mul(b,MGY_R.getValue()), MGY_N.getValue());
 
         /** Calculate V = - N^(-1) mod R **/
-        int[] invN = modInverse();
+        int[] invN = modInverse(MGY_R);
 
         /** C Montgomery Representation **/
         // C = A.B.R^(-1) mod N = (A.B + A.B.V.N) / R mod N
-        //int[] C =
+        //int[] C = add(mul(A,B),mul(mul(A,B),mul(MGY_V.getValue(), MGY_N.getValue())));
 
         /** c Calculation **/
         int[] c = new int[1];
@@ -537,23 +577,148 @@ public class BigNumber {
        return c;
     }
 
-    /** (In progress)
+    /**
      * To pick the right value for R
      * in the Montgomery Multiplication
+     * Implemented for 1024 bits values for n !
      * @param n
      * @return
      */
     private static int[] pickRMontgomeryMul(int[] n) {
-
-        return new int[1];
+        int i = 2;
+        while (compareValue(preCalculatedR[i],n)==-1 && i<7) {
+            i++;
+        }
+        if (compareValue(preCalculatedR[i],n)==-1) {
+            throw new ArithmeticException("Mod n might not be a 1024 bits number !!");
+        }
+        return preCalculatedR[i];
     }
 
     /** (In progress)
      * Use the Extended Euclide Algorithm
+     * Return this mod R
      * @return
      */
-    public int[] modInverse() {
+    public int[] modInverse(BigNumber R) {
+
+        /** Check if this and MGY_N are prime **/
+
+
         return new int[1];
+    }
+
+    /**
+     * Returns GCD of a and b
+     * Use Euclid's Algorithm until the numbers are the same length
+     * and use binary GCD Algorithm to finc GCD
+     * @param a
+     * @param b
+     * @return
+     */
+    public int[] gcd(int[] a, int[] b) {
+
+        while (b.length !=0) {
+            if (Math.abs(a.length - b.length) < 2 ) {
+                return binGCD(a, b);
+            }
+
+            int[] temp = div(a,b);
+            a = b;
+            b = temp;
+        }
+        return a;
+    }
+
+    /**
+     * Calculate GCD of a and b
+     * Algorithm B from "Art of Computer Programming Knuth vol.2" section 4.5.2
+     *
+     * B1. [Find Power of 2] Set k <- 0, and then repeatedly set k <- k+1, u <- u/2, v <- v/2
+     * zero or more times until u and v are not both even.
+     *
+     * B2. [Initialize] Now the original values of u and v have been divided by 2^k and at
+     * least one of their present value is odd. If u is odd, set t <- -v and go to B4.
+     * Otherwise set t <- u
+     *
+     * B3. [Halve t] At this point, t is even and nonzero. Set t <- t/2
+     *
+     * B4. [Is t even ?] If t is even, go back to B3
+     *
+     * B5. [Reset max(u,v)]. If t>0, set u <- t; otherwise set v <- -t
+     *
+     * B6. [Substract] Set t <- u - v. If t!=0, go back to B3. Otherwise the algorithm
+     * terminates with u*2^k as the output.
+     * @param val
+     * @return
+     */
+    public int[] binGCD(int[] u, int[] v) {
+        int k = 0;
+        int[] t = new int[Math.max(u.length, v.length)];
+
+        /** Step 1 **/
+        while (compareValue(u,v)!=0) {
+            k++;
+            u = divideBy2(u);
+            v = divideBy2(v);
+        }
+
+        /** Step 2 **/
+        // if lowestBitSet is at the index 0 -> odd
+        if (isOdd(u)) {
+            //t = -u; Handle negative numbers !!!!
+
+        }
+        else {
+            t = u;
+        }
+
+        return new int[1];
+
+    }
+
+    /**
+     * Returns val divided by 2
+     * @param val
+     * @return
+     */
+    public int[] divideBy2(int[] val) {
+        int[] res = new int[val.length];
+        for (int i=0;i<val.length;i++) {
+            val[i] = val[i]>>1;
+        }
+        return new BigNumber(res).value;
+    }
+
+    /**
+     * Returns True if a is Odd
+     * Looks at the last array's case and convert the Integer
+     * stored into its Binary representation to check if the bit
+     * relative to 2⁰ is set or not.
+     * @param a
+     * @return
+     */
+    public boolean isOdd(int[] a) {
+        String bin = Integer.toBinaryString(a[a.length-1]);
+        if (bin.charAt(bin.length()-1)=='1') { return true;}
+        return false;
+    }
+
+
+
+    /**
+     * Returns True is the Integer Array given is equals to zero, and False is not
+     * @param val
+     * @return
+     */
+    public boolean isZero(int[] val) {
+        int len = val.length;
+        for (int i=0;i<len;i++) {
+            if (val[i]!=0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** (In progress)
@@ -569,7 +734,8 @@ public class BigNumber {
 
 
     /**
-     * Compare value array of two Big Numbers
+     * Compare value array of this Big Number with
+     * the 32 bits Integer Array y
      * @param y
      * @return -1, 0 or 1 if this is less than,
      * equal to or greater than y array
@@ -591,6 +757,40 @@ public class BigNumber {
 
             if (valThis != yValue) {
                 if ((valThis & LONG_MASK) < (yValue & LONG_MASK)) {
+                    return -1;
+                }
+                else {
+                    return 1;
+                }
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Compare value of two 32 bits Integer Arrays
+     * @param x
+     * @param y
+     * @return -1, 0 or 1 if x is less than,
+     * equal to or greater than y array
+     */
+    public static int compareValue(int[] x, int[] y) {
+
+        int lenThis = x.length;
+        int yLen = y.length;
+
+        if (lenThis > yLen) {
+            return 1;
+        }
+        if (lenThis < yLen) {
+            return -1;
+        }
+        for (int i = 0; i < lenThis; i++) {
+            int valThis = x[i];
+            int yValue = y[i];
+
+            if (valThis != yValue) {
+                if ((valThis & 0xFFFFFFFFL) < (yValue & 0xFFFFFFFFL)) {
                     return -1;
                 }
                 else {
@@ -656,13 +856,6 @@ public class BigNumber {
     public int numberDigitsMultiplication(int x, int y) {
         return (int) Math.floor(Math.log10(x) + Math.log10(y)) +1;
     }
-
-
-    /** (In progress)
-     * Pre-calculated values for 2^k
-     * Used for Montgomery Multiplication
-     */
-    private static int[] preCalculatedR[] = {null};
 
 
     /**
