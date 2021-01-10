@@ -412,7 +412,7 @@ public class BigNumber {
 
         /** Suppose that x is bigger than y **/
         /** If not **/
-        if ((big.length < small.length) || (big.length == small.length && (big[0]< small[0]))) {
+        if (compareValue(big,small)==-1) {
             int[] temp = big;
             big = small;
             small = temp;
@@ -609,6 +609,13 @@ public class BigNumber {
     }
 
     /**
+     * Returns GCD of this and bg
+     * @param bg
+     * @return
+     */
+    public BigNumber gcd(BigNumber bg) {return new BigNumber(gcd(this.value,bg.value));}
+
+    /**
      * Returns GCD of a and b
      * Use Euclid's Algorithm until the numbers are the same length
      * and use binary GCD Algorithm to finc GCD
@@ -654,28 +661,99 @@ public class BigNumber {
      */
     public int[] binGCD(int[] u, int[] v) {
         int k = 0;
+        int tSign = 0;
+        int[] maxIntValue = {4,294967295};
         int[] t = new int[Math.max(u.length, v.length)];
+        int[] res = new int[1];
 
         /** Step 1 **/
-        while (compareValue(u,v)!=0) {
+        boolean uOd= isOdd(u);
+        boolean vOd= isOdd(v);
+        while (!isOdd(u) && !isOdd(v)) {
             k++;
             u = divideBy2(u);
             v = divideBy2(v);
         }
 
         /** Step 2 **/
-        // if lowestBitSet is at the index 0 -> odd
-        if (isOdd(u)) {
-            //t = -u; Handle negative numbers !!!!
+        // if lowestBit Set is at the index 0 -> odd
+        boolean uOdd = isOdd(u);
+        t = uOdd ? v : u;
+        tSign = uOdd ? -1: 1;
+
+
+        while (true) {
+            /** Steps 3 & 4 **/
+            t = divideBy2(t);
+
+            /** Step 5 **/
+            if (tSign == 1) {
+                u = t;
+            } else {
+                v = t;
+            }
+
+            // Special case one word numbers
+            if (compareValue(u,maxIntValue) < 1 && compareValue(v,maxIntValue) < 1) {
+                int x = u[0];
+                int y = v[0];
+                x  = binaryGcd(x, y);
+                res[0] = x;
+                if (k > 0)
+                    res = leftShift(res,k);
+                return res;
+            }
+
+            /** Step 6 **/
+            if (compareValue(u,v)==0) {break;};
+            if (compareValue(u,v)==-1) {
+                tSign=-1;
+                v = substract(u,v);
+                t = v;
+            }
+            else {
+                tSign=1;
+                u = substract(u,v);
+                t = u;
+                }
 
         }
-        else {
-            t = u;
-        }
-
-        return new int[1];
-
+        //u*2**k
+        int[] temp = leftShift(u,k);
+        return leftShift(u,k);
     }
+
+    /**
+     * Calculate GCD of integers a and b
+     * Consider unsigned int !!
+     * @param a
+     * @param b
+     * @return
+     */
+    public int binaryGcd(int a, int b) {
+        if (b==0) {return a;}
+        if (a==0) {return b;}
+
+        /** Right shift a & b till their last bits equal to 1 **/
+        int aZeros = Integer.numberOfTrailingZeros(a);
+        int bZeros = Integer.numberOfTrailingZeros(b);
+        a >>>= aZeros;
+        b >>>= bZeros;
+
+        int t = (aZeros < bZeros ? aZeros : bZeros);
+
+        while (a != b) {
+            if ((a+0x80000000) > (b+0x80000000)) {  // a > b as unsigned
+                a -= b;
+                a >>>= Integer.numberOfTrailingZeros(a);
+            } else {
+                b -= a;
+                b >>>= Integer.numberOfTrailingZeros(b);
+            }
+        }
+        return a<<t;
+    }
+
 
     /**
      * Returns val divided by 2
@@ -685,7 +763,62 @@ public class BigNumber {
     public int[] divideBy2(int[] val) {
         int[] res = new int[val.length];
         for (int i=0;i<val.length;i++) {
-            val[i] = val[i]>>1;
+
+            // to handle "carry" to the other case
+            if (val[i]>>1==0 && i!=val.length-1) {
+                res[i] = 0;
+                res[i+1] = (int) ((val[i]*SUPER_RADIX)>>1);
+            }
+            else {
+                res[i] += val[i]>>1;
+            }
+        }
+        return new BigNumber(res).value;
+    }
+
+    /**
+     * Return non empty size of the Array
+     * @param a
+     * @return
+     */
+    public int trueSize(int[] a) {
+        int size = a.length;
+        int i=0;
+        while (a[i]==0) {
+            i++;
+            size--;
+        }
+        return size;
+    }
+
+    /**
+     * Returns val left shifted by k
+     * @param val
+     * @return
+     */
+    public int[] leftShift(int[] val, int k) {
+        int[] res = new int[val.length];
+        long temp = 0;
+        for (int i=val.length-1;i>-1;i--) {
+            temp = val[i]<<k;
+            /** More than 9 digits **/
+            if (Long.toString(temp).length()>9) {
+                /** Need for bigger array **/
+                if(i==0) {
+                    int bigger[] = new int[res.length + 1];
+                    System.arraycopy(res, 0, bigger, 1, res.length);
+                    bigger[0] = (int) (temp / SUPER_RADIX);
+                    bigger[1] += (int) (temp % SUPER_RADIX);
+                    return new BigNumber(bigger).value;
+                }
+                else {
+                    res[i-1] += (int) (temp / SUPER_RADIX);
+                    res[i] += (int) (temp % SUPER_RADIX);
+                }
+            }
+            else {
+                res[i] += (int) temp;
+            }
         }
         return new BigNumber(res).value;
     }

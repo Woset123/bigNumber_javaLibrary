@@ -12,8 +12,11 @@ public class Main {
         //System.out.println(st.length());
          int nbBits = (int) (st.length() * log(10) / log(2));
          //System.out.println(nbBits);
-        //BigInteger bi = new BigInteger("100000001000000000000000000000000000000000100000000",2);
-        //System.out.println(bi.toString());
+        BigInteger bi = new BigInteger("789");
+        BigInteger bi2 = new BigInteger("156");
+        BigInteger gcd = bi.gcd(bi2);
+
+        System.out.println(gcd.toString());
         test();
     }
 
@@ -23,13 +26,13 @@ public class Main {
      **/
     public static void test() {
         System.out.println("----- Number 1 -----");
-        BigNumber bg = new BigNumber("2 234567890");
+        BigNumber bg = new BigNumber("789");
 
         displayString(bg);
         System.out.println("----- Number 2 -----");
-        BigNumber huge = new BigNumber("1234 567891011");
+        BigNumber huge = new BigNumber("156");
         displayString(huge);
-        BigNumber bg2 = bg.add(huge);
+        BigNumber bg2 = bg.gcd(huge);
         System.out.println("----- Output -----");
         displayString(bg2);
     }
