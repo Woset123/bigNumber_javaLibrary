@@ -12,12 +12,15 @@ public class Main {
         //System.out.println(st.length());
          int nbBits = (int) (st.length() * log(10) / log(2));
          //System.out.println(nbBits);
-        BigInteger bi = new BigInteger("789");
-        BigInteger bi2 = new BigInteger("156");
-        BigInteger gcd = bi.gcd(bi2);
+        BigInteger bi = new BigInteger("1111111111111111111111");
+        BigInteger bi2 = new BigInteger("22222222222222222222222");
+        BigInteger gcd = bi.multiply(bi2);
 
-        System.out.println(gcd.toString());
+        //System.out.println(gcd.toString());
         test();
+        System.out.println("----- Assert -----");
+        System.out.println(gcd.toString());
+
     }
 
 
@@ -26,15 +29,16 @@ public class Main {
      **/
     public static void test() {
         System.out.println("----- Number 1 -----");
-        BigNumber bg = new BigNumber("789");
+        BigNumber bg = new BigNumber("1111111111111111111111");
 
         displayString(bg);
         System.out.println("----- Number 2 -----");
-        BigNumber huge = new BigNumber("156");
+        BigNumber huge = new BigNumber("22222222222222222222222");
         displayString(huge);
-        BigNumber bg2 = bg.gcd(huge);
+        BigNumber bg2 = bg.mul(huge);
         System.out.println("----- Output -----");
         displayString(bg2);
+
     }
 
     /**

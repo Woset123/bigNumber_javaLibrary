@@ -427,6 +427,7 @@ public class BigNumber {
         /** Substract common parts **/
         while (smallIndex > 0) {
             sub = (big[--bigIndex] & LONG_MASK) - (small[--smallIndex] & LONG_MASK) - borrow;
+            borrow = 0;
             res[bigIndex] = (int) sub;
             if (res[bigIndex] < 0) {
                 borrow = 1;
@@ -438,6 +439,15 @@ public class BigNumber {
         while (bigIndex > 0)
             res[--bigIndex] = (int) (big[bigIndex] - borrow);
             borrow = 0;
+
+        /** Check if need to reduce array's size **/
+        if (trueSize(res)<res.length) {
+            int[] smaller = new int[trueSize(res)];
+            int tp = res.length-trueSize(res);
+            System.arraycopy(res, tp, smaller,0,trueSize(res));
+            return smaller;
+        }
+
 
         return res;
     }
@@ -596,16 +606,39 @@ public class BigNumber {
     }
 
     /** (In progress)
-     * Use the Extended Euclide Algorithm
-     * Return this mod R
+     * Use the Extended Euclide Algorithm (page 325 Algorithm X 4.5.2)
+     * https://stackoverflow.com/questions/59536376/finding-bezout-coefficients-via-extended-euclidean-algorithm-on-array-of-arbitra
+     *
+     *
+     * Almost Montgomery Inverse AMI(a) = a**-1 * 2**k mod p
+     * https://users.fit.cvut.cz/~lorencz/clanky/2_Subtraction-free_2005.pdf
      * @return
      */
-    public int[] modInverse(BigNumber R) {
+    public int[] modInverse(BigNumber m) {
 
-        /** Check if this and MGY_N are prime **/
+
+
+
+
 
 
         return new int[1];
+    }
+
+
+    /** (In progress)
+     * Extended Binary GCD Algorithm
+     * Similar to Binary GCD Algorithm but
+     * provides Bezout coefficient too !
+     * Algorithm based on https://github.com/DavidNorman/gcd : "The extended algorithm"
+     *
+     *
+     * If we try to calculate Bezout coeff when "CASE ONE WORD" ??? Then leftshift(k) of the results
+     * Check if valide !!
+     */
+    public int[] extendedBinGcd(int[] a, int[] b) {
+
+            return new int[1];
     }
 
     /**
@@ -660,20 +693,20 @@ public class BigNumber {
      * @return
      */
     public int[] binGCD(int[] u, int[] v) {
-        int k = 0;
         int tSign = 0;
         int[] maxIntValue = {4,294967295};
         int[] t = new int[Math.max(u.length, v.length)];
         int[] res = new int[1];
 
         /** Step 1 **/
-        boolean uOd= isOdd(u);
-        boolean vOd= isOdd(v);
-        while (!isOdd(u) && !isOdd(v)) {
-            k++;
-            u = divideBy2(u);
-            v = divideBy2(v);
+        int ulbIndex = getLowestBitSet(u);
+        int vlbIndex = getLowestBitSet(v);
+        int k = (ulbIndex < vlbIndex) ? ulbIndex : vlbIndex;
+        if (k!=0) {
+            u = rightShift(u,k);
+            v = rightShift(v,k);
         }
+
 
         /** Step 2 **/
         // if lowestBit Set is at the index 0 -> odd
@@ -682,9 +715,10 @@ public class BigNumber {
         tSign = uOdd ? -1: 1;
 
 
-        while (true) {
+        int lbIndex;
+        while ((lbIndex = getLowestBitSet(t))>=0) {
             /** Steps 3 & 4 **/
-            t = divideBy2(t);
+            t = rightShift(t,lbIndex);
 
             /** Step 5 **/
             if (tSign == 1) {
@@ -693,12 +727,13 @@ public class BigNumber {
                 v = t;
             }
 
-            // Special case one word numbers
+            // Special case value can fit into an Integer
             if (compareValue(u,maxIntValue) < 1 && compareValue(v,maxIntValue) < 1) {
-                int x = u[0];
-                int y = v[0];
-                x  = binaryGcd(x, y);
-                res[0] = x;
+                // Affect the array value into one long
+                long x = fitIntoLong(u);
+                long y = fitIntoLong(v);
+                x  = gcd(x, y);
+                res[0] = (int) x;
                 if (k > 0)
                     res = leftShift(res,k);
                 return res;
@@ -718,62 +753,163 @@ public class BigNumber {
                 }
 
         }
-        //u*2**k
-        int[] temp = leftShift(u,k);
-        return leftShift(u,k);
+        if (k >0) {
+            //u*2**k
+            u = leftShift(u,k);
+        }
+        return u;
     }
 
     /**
      * Calculate GCD of integers a and b
-     * Consider unsigned int !!
      * @param a
      * @param b
      * @return
      */
-    public int binaryGcd(int a, int b) {
-        if (b==0) {return a;}
-        if (a==0) {return b;}
-
-        /** Right shift a & b till their last bits equal to 1 **/
-        int aZeros = Integer.numberOfTrailingZeros(a);
-        int bZeros = Integer.numberOfTrailingZeros(b);
-        a >>>= aZeros;
-        b >>>= bZeros;
-
-        int t = (aZeros < bZeros ? aZeros : bZeros);
-
-        while (a != b) {
-            if ((a+0x80000000) > (b+0x80000000)) {  // a > b as unsigned
-                a -= b;
-                a >>>= Integer.numberOfTrailingZeros(a);
-            } else {
-                b -= a;
-                b >>>= Integer.numberOfTrailingZeros(b);
-            }
+    public int gcd(long a, long b) {
+        if (b!=0) {
+            return gcd(b, a%b);
         }
-        return a<<t;
+        else {
+            return (int) a;
+        }
     }
 
+    /**
+     * Suppose a < MAX_INTEGER_VALUE
+     * @param a
+     * @return
+     */
+    public long fitIntoLong(int[] a) {
+        if (a.length==1) {
+            return (long) (a[0]);
+        }
+        else {
+            return (long) (a[0]*Math.pow(10,9) + a[1]);
+        }
+
+    }
 
     /**
-     * Returns val divided by 2
+     * Returns val rightshifted by k
      * @param val
      * @return
      */
-    public int[] divideBy2(int[] val) {
+    public int[] rightShift(int[] val, int k) {
         int[] res = new int[val.length];
-        for (int i=0;i<val.length;i++) {
+        int[] carry = new int[val.length];
 
-            // to handle "carry" to the other case
-            if (val[i]>>1==0 && i!=val.length-1) {
-                res[i] = 0;
-                res[i+1] = (int) ((val[i]*SUPER_RADIX)>>1);
+        if(k!=0) {
+            if (trueSize(val)==1){
+                for (int i=0;i<val.length;i++) {
+                    if (val[i]!=0) {res[i] += val[i]>>k;}
+                    else {res[i] += 0;}
+                }
             }
             else {
-                res[i] += val[i]>>1;
+                for (int i=0;i<val.length;i++) {
+                    int index = Integer.numberOfTrailingZeros(val[i]);
+                    if ((index > k) || (i==val.length-1)) {
+                        res[i] += val[i]>>k;
+                    }
+                    else {
+                        res[i] += val[i]>>k;
+                        //Get the decimal part
+                        double t = (double) ((val[i] / Math.pow(2,k)));
+                        String str = String.format("%f",t);
+                        str = removeZeros(str);
+                        String[] te = str.split("\\.");
+                        t = Integer.parseInt(te[1]);
+                        int tp = (int) ((t*Math.pow(10,9-te[1].length())));
+                        carry[i+1] = tp;
+                    }
+                }
+                /** Apply the carries **/
+                res = add(res,carry);
+            }
+
+            /** Check if need to reduce array's size **/
+            if (trueSize(res)<res.length) {
+                int[] smaller = new int[trueSize(res)];
+                int tp = res.length-trueSize(res);
+                System.arraycopy(res, tp, smaller,0,trueSize(res));
+                return smaller;
+            }
+
+            return res;
+        }
+        else {
+            return val;
+        }
+
+    }
+
+    /**
+     * Returns val left shifted by k
+     * @param val
+     * @return
+     */
+    public int[] leftShift(int[] val, int k) {
+        int[] res = val;
+        for (int i = 0; i < k; i++) {
+            res = unitaryLeftShift(res);
+        }
+    return res;
+    }
+
+    /**
+     * Returns val left shifted by 1
+     * Fragmented so that the long will not be overflowed !!
+     * @param val
+     * @return
+     */
+    public int[] unitaryLeftShift(int[] val) {
+
+        int[] res = new int[val.length];
+        long temp = 0;
+        for (int i=val.length-1;i>-1;i--) {
+            temp = val[i]<<1;
+            /** More than 9 digits **/
+            if (Long.toString(temp).length()>9) {
+                /** Need for bigger array **/
+                if(i==0) {
+                    int bigger[] = new int[res.length + 1];
+                    System.arraycopy(res, 0, bigger, 1, res.length);
+                    bigger[0] += (int) (temp / SUPER_RADIX);
+                    bigger[1] += (int) (temp % SUPER_RADIX);
+                    return new BigNumber(bigger).value;
+                }
+                else {
+                    res[i-1] += (int) (temp / SUPER_RADIX);
+                    res[i] += (int) (temp % SUPER_RADIX);
+                }
+            }
+            else {
+                res[i] += (int) temp;
             }
         }
-        return new BigNumber(res).value;
+        return res;
+    }
+
+    /**
+     * Return the index of the lowest bit set in val
+     * If val = 0 , -1 is returned
+     * @param val
+     * @return
+     */
+    public int getLowestBitSet(int[] val) {
+
+        if (isZero(val)) {return -1;}
+        int j,b;
+        int tp = trueSize(val);
+        for (j=trueSize(val)-1;(j>0) && (val[j]==0);j--);
+        b = val[j];
+        if (b==0) {
+            return -1;
+        }
+        // numberOfTrailingZeros : Number of '0' at the right of the lowest bit set for b
+        // <<5 because 32 bits per tile of the array !
+        return ((trueSize(val)-1-j)<<5) + Integer.numberOfTrailingZeros(b);
     }
 
     /**
@@ -792,36 +928,26 @@ public class BigNumber {
     }
 
     /**
-     * Returns val left shifted by k
-     * @param val
+     * Remove right side zeros
+     * @param str
      * @return
      */
-    public int[] leftShift(int[] val, int k) {
-        int[] res = new int[val.length];
-        long temp = 0;
-        for (int i=val.length-1;i>-1;i--) {
-            temp = val[i]<<k;
-            /** More than 9 digits **/
-            if (Long.toString(temp).length()>9) {
-                /** Need for bigger array **/
-                if(i==0) {
-                    int bigger[] = new int[res.length + 1];
-                    System.arraycopy(res, 0, bigger, 1, res.length);
-                    bigger[0] = (int) (temp / SUPER_RADIX);
-                    bigger[1] += (int) (temp % SUPER_RADIX);
-                    return new BigNumber(bigger).value;
-                }
-                else {
-                    res[i-1] += (int) (temp / SUPER_RADIX);
-                    res[i] += (int) (temp % SUPER_RADIX);
-                }
-            }
-            else {
-                res[i] += (int) temp;
-            }
+    public String removeZeros(String str) {
+        StringBuilder sb = new StringBuilder(str);
+        int i = sb.length()-1;
+        int compt = 0;
+        while (sb.charAt(i--)=='0' && i>0) {compt++;}
+        if(sb.charAt(i+1)=='.') {
+            return str;
         }
-        return new BigNumber(res).value;
+        else {
+            sb.delete(sb.length() - compt,sb.length());
+            return sb.toString();
+        }
+
     }
+
+
 
     /**
      * Returns True if a is Odd
