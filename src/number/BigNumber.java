@@ -42,12 +42,6 @@ public class BigNumber {
     final int DIGITS_PER_INT = 9;
 
     /**
-     * To get the int value of a long. A bit lower than it could be but to make sure
-     * the result will not be negative
-     */
-    final long LONG_MASK = 0xFFFFFFFFL;
-
-    /**
      * Value used for arithmetic operations
      */
     final long SUPER_RADIX = 1000000000;
@@ -110,12 +104,6 @@ public class BigNumber {
         /** Erase spaces **/
         val =val.replaceAll("\\s+", "");
 
-        /** Check if all digits are figures **/
-        /** To Do **/
-
-        /** Erase the leading zeros if are **/
-        /** To Do **/
-
         /** Number of Digits in the input given **/
         this.nbDigits = val.length();
 
@@ -125,7 +113,7 @@ public class BigNumber {
         this.nbBits = (int) (Math.ceil(((float) (this.nbDigits * Math.log(10) / Math.log(2))))+1);
 
         /** Number of 32bits words necessary **/
-        this.nbWords = (int) (Math.ceil(((float) (this.nbBits) / (float) (WORD_SIZE)))+2);
+        this.nbWords = (int) (Math.ceil(((float) (this.nbBits) / (float) (WORD_SIZE)))+5);
 
         /** Words creation **/
         this.value = new int[this.nbWords];
@@ -161,6 +149,62 @@ public class BigNumber {
         this.strValue = toString(this.value);
     }
 
+    /**
+     * Shapes the Array given in input
+     * into a Short 16bit Array
+     * Short : maxDigits = 4
+     * @param val
+     * @param wordsize
+     */
+    public short[] reshapeStackIntoShort(int[] val) {
+
+        String str = toString(val);
+
+        /** Number of Digits in the input given **/
+        int nbDigits = str.length();
+
+        /** Number of bits required
+         * Add one so that the space allocated will never be too small
+         */
+        int nbBits = (int) (Math.ceil(((float) (nbDigits * Math.log(10) / Math.log(2))))+1);
+
+        /** Number of words necessary **/
+        int nbWords = (int) (Math.ceil(((float) (nbBits) / (float) (16)))+2);
+
+        /** Words creation **/
+        short[] value = new short[nbWords];
+
+        /** First Stack **/
+        int firstStackLength = nbDigits % 4;
+
+        if (firstStackLength==0) {
+            firstStackLength = 4;
+        }
+        int index = 0;
+
+        String stack = str.substring(index, index += firstStackLength);
+        value[0] = Short.parseShort(stack,10);
+
+        /** Others Stacks **/
+        int stackValue;
+        long binRadix = (long) Math.pow(2,16);
+        int i=1;
+        while (index < this.nbDigits) {
+            stack = str.substring(index,index += 4);
+            stackValue = Short.parseShort(stack,10);
+            value[i++] = (short) stackValue;
+        }
+
+        /** Check if size array too big **/
+        if (i<nbWords) {
+            short[] smaller = new short[i];
+            System.arraycopy(value, 0, smaller,0,i);
+            value = smaller;
+        }
+
+        return value ;
+    }
+
 
     /**
      * Big Number Constructor
@@ -180,9 +224,9 @@ public class BigNumber {
 
 
     /** Constant BigNumbers for Montgomery Multiplication **/
-    public static final BigNumber MGY_N = new BigNumber("123");
-    public static final BigNumber MGY_R = new BigNumber(pickRMontgomeryMul(MGY_N.getValue()));
-    public static final BigNumber MGY_V = new BigNumber();
+    //public static final BigNumber MGY_N = new BigNumber("123");
+    //public static final BigNumber MGY_R = new BigNumber(pickRMontgomeryMul(MGY_N.getValue()));
+    //public static final BigNumber MGY_V = new BigNumber();
 
     /**
      * Sum of two Big Numbers
@@ -244,19 +288,12 @@ public class BigNumber {
     /**
      * Montgomery Multiplication of two Big Numbers
      * @param bigNumber
+     * @param N
+     * @param R
+     * @param V
      * @return
      */
-    public BigNumber mulMontgomery(BigNumber bigNumber) { return new BigNumber(mulMontgomery(this.value, bigNumber.getValue()));}
-
-
-    /**
-     * Division of two Big Numbers
-     * Value stored into the Array of 32 bits Integer
-     * @param bigNumber
-     * @return
-     */
-    public BigNumber div(BigNumber bigNumber) { return new BigNumber(div(this.value, bigNumber.getValue())); }
-
+    public BigNumber mulMontgomery(BigNumber bigNumber, BigNumber N, BigNumber R, BigNumber V ) { return new BigNumber(mulMontgomery(this.value, bigNumber.getValue(),N,R,V));}
 
 /****************************************************************************/
 
@@ -296,13 +333,13 @@ public class BigNumber {
 
         while (yIndex > 0){
 
-            sum = (x[--xIndex] & LONG_MASK) + (y[--yIndex] & LONG_MASK) + (sum >>> WORD_SIZE);
-            res[xIndex] = (int) (sum & LONG_MASK);
+            sum = (long) x[--xIndex] + y[--yIndex] + (sum / SUPER_RADIX);
+            res[xIndex] = (int) (sum % SUPER_RADIX);
 
         }
 
         /** Check if carry to propagate **/
-        boolean carry = (sum >>> 32 !=0);
+        boolean carry = (sum / SUPER_RADIX !=0);
         while (carry && xIndex > 0) {
             carry = ((res[--xIndex] = (int) (x[xIndex] + 1)) == 0);
         }
@@ -337,12 +374,12 @@ public class BigNumber {
         int res[] = new int[xIndex];
         long sum = 0;
 
-        sum = (x[--xIndex] & LONG_MASK) + (y & LONG_MASK) + (sum >>> WORD_SIZE);
-        res[xIndex] = (int) (sum & LONG_MASK);
+        sum = (long) x[--xIndex] + y + (sum / SUPER_RADIX);
+        res[xIndex] = (int) (sum % SUPER_RADIX);
 
 
         /** Check if carry to propagate **/
-        boolean carry = (sum >>> 32 !=0);
+        boolean carry = (sum / SUPER_RADIX !=0);
         while (carry && xIndex > 0) {
             carry = ((res[--xIndex] = (int) (x[xIndex] + 1)) == 0);
         }
@@ -426,7 +463,7 @@ public class BigNumber {
 
         /** Substract common parts **/
         while (smallIndex > 0) {
-            sub = (big[--bigIndex] & LONG_MASK) - (small[--smallIndex] & LONG_MASK) - borrow;
+            sub = big[--bigIndex] - small[--smallIndex] - borrow;
             borrow = 0;
             res[bigIndex] = (int) sub;
             if (res[bigIndex] < 0) {
@@ -467,7 +504,7 @@ public class BigNumber {
     }
 
 
-    /**
+    /** Not very optimized...
      * Implements mod function
      * @param a
      * @param mod
@@ -475,32 +512,28 @@ public class BigNumber {
      */
     public int[] mod(int[] a, int[] mod) {
 
-        BigNumber bg = new BigNumber(a);
+        /** Sum equals to mod **/
+        if (compareValue(a, mod)==0) {
+            return substract(a,mod);
+        }
 
         /** Sum greater than mod **/
-        if (bg.compareValue(mod)==1) {
-            while (bg.compareValue(mod)==1) {
-                bg.value = substract(bg.value, mod);
-            }
-            /** Check if need to reduce array's size **/
-            int i=0;
-            int lenSmall= bg.getValue().length;
-            while (bg.getValue()[i++]==0) {
-                lenSmall--;
-            }
-            if (lenSmall!=bg.getValue().length) {
-                int[] smaller = new int[lenSmall];
-                System.arraycopy(bg.getValue(), i-1, smaller,0,lenSmall);
-                bg.value = smaller;
-            }
-            return bg.getValue();
+        while (compareValue(a,mod)==1) {
+            a = substract(a, mod);
+        }
+        /** Check if need to reduce array's size **/
+        int i=0;
+        int lenSmall= a.length;
+        while (a[i++]==0) {
+            lenSmall--;
+        }
+        if (lenSmall!=a.length) {
+            int[] smaller = new int[lenSmall];
+            System.arraycopy(a, i-1, smaller,0,lenSmall);
+            a = smaller;
+        }
+        return a;
 
-        }
-        /** Sum equals to mod **/
-        if (bg.compareValue(mod)==0) {
-            return new int[1];
-        }
-        return bg.getValue();
     }
 
 
@@ -519,7 +552,8 @@ public class BigNumber {
             x = y;
             y = temp;
         }
-        int[] temp = new int[x.length + y.length];
+
+        int[] res = new int[x.length + y.length];
         int xCursor = x.length-1;
         int yCursor = y.length-1;
         long product = 0;
@@ -527,20 +561,24 @@ public class BigNumber {
 
         for (int i = xCursor; i > -1; i--) {
 
+            int[] low = new int[x.length+y.length];
+
             for (int j = yCursor; j > -1; j--) {
 
-                product = (long) (((long) x[i] & LONG_MASK) * ((long) y[j] & LONG_MASK));
-
-                if (product > Integer.MAX_VALUE && (i+j-1 > -1)) {
-                    temp[i+j-1] = (int) (temp[i+j-1] + Math.ceil(product / SUPER_RADIX));
-                    temp[i+j] += (int) (product % SUPER_RADIX);
+                int[] high = new int[x.length+y.length];
+                product = (long) x[i] * y[j];
+                if (product > 99999999) {
+                    high[i+j] = (int) ((long) product / SUPER_RADIX);
+                    high[i+j+1] = (int) ((long) product % SUPER_RADIX);
                 }
                 else {
-                    temp[i+j] += (int) product;
+                    high[i+j]=(int) product;
                 }
+                low = add(low,high);
             }
+            res = add(res,low);
         }
-        return temp;
+        return res;
     }
 
     /** (In progress)
@@ -566,25 +604,51 @@ public class BigNumber {
      * @param b
      * @return Montgomery Multiplication value into Arrays of 32 bits Integer
      */
-    public int[] mulMontgomery(int[] a, int[] b) {
+    public int[] mulMontgomery(int[] a, int[] b, BigNumber N,BigNumber R, BigNumber V) {
 
-        /** A and B Montgomery Representations **/
-        // A = a.R mod N
-        int[] A = mod(mul(a, MGY_R.getValue()), MGY_N.getValue());
-        // B = b.R mod N
-        int[] B = mod(mul(b,MGY_R.getValue()), MGY_N.getValue());
+        // A and B Montgomery Representations
+        // A = a.R mod N = a montgomeryOperator r² mod n (with r² mod N already precalculated)
+        int[] A = mod(mul(a, R.getValue()), N.getValue());
+        // B = b.R mod N = b montgomeryOperator r² mod n (with r² mod N already precalculated)
+        int[] B = mod(mul(b,R.getValue()), N.getValue());
 
-        /** Calculate V = - N^(-1) mod R **/
-        int[] invN = modInverse(MGY_R);
+        // s = A*B
+        int[] s = mul(A,B);
 
-        /** C Montgomery Representation **/
-        // C = A.B.R^(-1) mod N = (A.B + A.B.V.N) / R mod N
-        //int[] C = add(mul(A,B),mul(mul(A,B),mul(MGY_V.getValue(), MGY_N.getValue())));
+        // t = (s*v) mod r
+        int[] t = mod(mul(s,V.getValue()),R.getValue());
 
-        /** c Calculation **/
-        int[] c = new int[1];
+        // m = (s + t * n)
+        int[] m = add(s,mul(t, N.getValue()));
 
-       return c;
+        // u = m/r
+        int[] u = leftShift(m,findRExpMontgomeryMul(R.getValue()));
+
+        // if u>=n : return u-n | else : return u
+        return (compareValue(u,N.getValue())>=0) ? substract(u,N.getValue()) : u ;
+
+    }
+
+    /**
+     * Calculate this montgomeryOperator b = this.b.r^-1 mod N
+     * @param b
+     * @param N
+     * @param R
+     * @param V
+     * @return
+     */
+    public BigNumber montgomeryOperator(BigNumber b, BigNumber N,BigNumber R, BigNumber V) {
+
+        // s = this * b
+        BigNumber s = this.mul(b);
+        // t = (s * v) mod r = (s * v) >> k ????
+        BigNumber t = new BigNumber(rightShift(s.mul(V).getValue(),findRExpMontgomeryMul(R.getValue())));
+        // m = (s + t * n)
+        BigNumber m = (s.add(t.mul(N)));
+        // u = m/r
+        BigNumber u = new BigNumber(leftShift(m.getValue(),findRExpMontgomeryMul(R.getValue())));
+        // if u>=n : return u-n | else : return u
+        return (compareValue(u.getValue(),N.getValue())>=0) ? u.substract(N) : u ;
     }
 
     /**
@@ -605,40 +669,22 @@ public class BigNumber {
         return preCalculatedR[i];
     }
 
-    /** (In progress)
-     * Use the Extended Euclide Algorithm (page 325 Algorithm X 4.5.2)
-     * https://stackoverflow.com/questions/59536376/finding-bezout-coefficients-via-extended-euclidean-algorithm-on-array-of-arbitra
-     *
-     *
-     * Almost Montgomery Inverse AMI(a) = a**-1 * 2**k mod p
-     * https://users.fit.cvut.cz/~lorencz/clanky/2_Subtraction-free_2005.pdf
+    /**
+     * To pick the right exposant for R
+     * in the Montgomery Multiplication
+     * Implemented for 1024 bits values for n !
+     * @param n
      * @return
      */
-    public int[] modInverse(BigNumber m) {
-
-
-
-
-
-
-
-        return new int[1];
-    }
-
-
-    /** (In progress)
-     * Extended Binary GCD Algorithm
-     * Similar to Binary GCD Algorithm but
-     * provides Bezout coefficient too !
-     * Algorithm based on https://github.com/DavidNorman/gcd : "The extended algorithm"
-     *
-     *
-     * If we try to calculate Bezout coeff when "CASE ONE WORD" ??? Then leftshift(k) of the results
-     * Check if valide !!
-     */
-    public int[] extendedBinGcd(int[] a, int[] b) {
-
-            return new int[1];
+    private static int findRExpMontgomeryMul(int[] n) {
+        int i = 2;
+        while (compareValue(preCalculatedR[i],n)==-1 && i<7) {
+            i++;
+        }
+        if (compareValue(preCalculatedR[i],n)==-1) {
+            throw new ArithmeticException("Mod n might not be a 1024 bits number !!");
+        }
+        return i+1020;
     }
 
     /**
@@ -656,19 +702,8 @@ public class BigNumber {
      * @param b
      * @return
      */
-    public int[] gcd(int[] a, int[] b) {
+    public int[] gcd(int[] a, int[] b) {return binGCD(a, b);}
 
-        while (b.length !=0) {
-            if (Math.abs(a.length - b.length) < 2 ) {
-                return binGCD(a, b);
-            }
-
-            int[] temp = div(a,b);
-            a = b;
-            b = temp;
-        }
-        return a;
-    }
 
     /**
      * Calculate GCD of a and b
@@ -948,7 +983,6 @@ public class BigNumber {
     }
 
 
-
     /**
      * Returns True if a is Odd
      * Looks at the last array's case and convert the Integer
@@ -962,7 +996,6 @@ public class BigNumber {
         if (bin.charAt(bin.length()-1)=='1') { return true;}
         return false;
     }
-
 
 
     /**
@@ -979,18 +1012,6 @@ public class BigNumber {
         }
         return true;
     }
-
-    /** (In progress)
-     * Division of two arrays of 32 bits Integer
-     * @param a
-     * @param b
-     * @return
-     */
-    public int[] div(int[] a, int[] b) {
-
-        return new int[1];
-    }
-
 
     /**
      * Compare value array of this Big Number with
@@ -1015,7 +1036,7 @@ public class BigNumber {
             int yValue = y[i];
 
             if (valThis != yValue) {
-                if ((valThis & LONG_MASK) < (yValue & LONG_MASK)) {
+                if (valThis < yValue) {
                     return -1;
                 }
                 else {
@@ -1049,7 +1070,7 @@ public class BigNumber {
             int yValue = y[i];
 
             if (valThis != yValue) {
-                if ((valThis & 0xFFFFFFFFL) < (yValue & 0xFFFFFFFFL)) {
+                if (valThis < yValue) {
                     return -1;
                 }
                 else {
@@ -1076,7 +1097,7 @@ public class BigNumber {
 
 
         for (int i=res.length-1; i > 0; i--) {
-            currentStack = (int) (((long) res[i]) & LONG_MASK) + remainder;
+            currentStack = (int) (res[i]) + remainder;
             if (currentStack > SUPER_RADIX) {
                 remainder = currentStack/SUPER_RADIX;
             }
