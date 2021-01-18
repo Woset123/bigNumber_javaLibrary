@@ -1,8 +1,10 @@
 package number;
-
-
-import java.math.BigInteger;
 import java.util.ArrayList;
+
+/**
+ * @author Eric
+ * @version 1.0
+ */
 
 public class BigNumber {
 
@@ -16,24 +18,16 @@ public class BigNumber {
      */
     int nbBits;
 
-    /** Number of 32 bits words possible
-     * given the nbBits
-     */
+    /** Number of 32 bits words possible given the nbBits **/
     int nbWords;
 
-    /**
-     * Value of the Big Number
-     */
+    /** Value of the Big Number **/
     int[] value;
 
-    /**
-     * Primitive used to store the final value into a String
-     */
+    /** Primitive used to store the final value into a String **/
     String strValue="";
 
-    /**
-     * Size of a Word
-     */
+    /** Size of a Word **/
     final int WORD_SIZE = 32;
 
     /** Number of digits (for radix equals to 10)
@@ -42,33 +36,9 @@ public class BigNumber {
      */
     final int DIGITS_PER_INT = 9;
 
-    /**
-     * Value used for arithmetic operations
-     */
+    /** Value used for arithmetic operations **/
     final long SUPER_RADIX = 1000000000;
 
-    /****************************************************************************/
-
-    /**
-     * Pre-calculated values for 2^k
-     * Used for Montgomery Multiplication
-     * 0 -> null
-     * 1 -> null
-     * 2 -> 2¹⁰²²
-     * 3 -> 2¹⁰²³
-     * 4 -> 2¹⁰²⁴
-     * 5 -> 2¹⁰²⁵
-     * 6 -> 2¹⁰²⁶
-     */
-    private static int[] preCalculatedR[] = {
-            null,
-            null,
-            {44,942328371,557897693,232629769,725618340,449424473,557664318,357520289,433168951,375240783,177119330,601884005,280028469,967848339,414697442,203604155,623211857,659868531,94441973,356216371,319075554,900311523,529863270,738021251,442209537,670585615,720368478,277635206,809290837,627671146,574559986,811484619,929076208,839082406,56034304},
-            {89,884656743,115795386,465259539,451236680,898848947,115328636,715040578,866337902,750481566,354238661,203768010,560056939,935696678,829394884,407208311,246423715,319737062,188883946,712432742,638151109,800623047,59726541,476042502,884419075,341171231,440736956,555270413,618581675,255342293,149119973,622969239,858152417,678164812,112068608},
-            {179,769313486,231590772,930519078,902473361,797697894,230657273,430081157,732675805,500963132,708477322,407536021,120113879,871393357,658789768,814416622,492847430,639474124,377767893,424865485,276302219,601246094,119453082,952085005,768838150,682342462,881473913,110540827,237163350,510684586,298239947,245938479,716304835,356329624,224137216},
-            {359,538626972,463181545,861038157,804946723,595395788,461314546,860162315,465351611,1926265,416954644,815072042,240227759,742786715,317579537,628833244,985694861,278948248,755535786,849730970,552604439,202492188,238906165,904170011,537676301,364684925,762947826,221081654,474326701,21369172,596479894,491876959,432609670,712659248,448274432},
-            {719,77253944,926363091,722076315,609893447,190791576,922629093,720324630,930703222,3852530,833909289,630144084,480455519,485573430,635159075,257666489,971389722,557896497,511071573,699461941,105208878,404984376,477812331,808340023,75352602,729369851,525895652,442163308,948653402,42738345,192959788,983753918,865219341,425318496,896548864}
-    };
 
     /****************************************************************************/
 
@@ -146,66 +116,8 @@ public class BigNumber {
             System.arraycopy(value, 0, smaller,0,i);
             this.value = smaller;
         }
-
         this.strValue = toString(this.value);
     }
-
-    /**
-     * Shapes the Array given in input
-     * into a Short 16bit Array
-     * Short : maxDigits = 4
-     * @param val
-     * @param wordsize
-     */
-    public short[] reshapeStackIntoShort(int[] val) {
-
-        String str = toString(val);
-
-        /** Number of Digits in the input given **/
-        int nbDigits = str.length();
-
-        /** Number of bits required
-         * Add one so that the space allocated will never be too small
-         */
-        int nbBits = (int) (Math.ceil(((float) (nbDigits * Math.log(10) / Math.log(2))))+1);
-
-        /** Number of words necessary **/
-        int nbWords = (int) (Math.ceil(((float) (nbBits) / (float) (16)))+2);
-
-        /** Words creation **/
-        short[] value = new short[nbWords];
-
-        /** First Stack **/
-        int firstStackLength = nbDigits % 4;
-
-        if (firstStackLength==0) {
-            firstStackLength = 4;
-        }
-        int index = 0;
-
-        String stack = str.substring(index, index += firstStackLength);
-        value[0] = Short.parseShort(stack,10);
-
-        /** Others Stacks **/
-        int stackValue;
-        long binRadix = (long) Math.pow(2,16);
-        int i=1;
-        while (index < this.nbDigits) {
-            stack = str.substring(index,index += 4);
-            stackValue = Short.parseShort(stack,10);
-            value[i++] = (short) stackValue;
-        }
-
-        /** Check if size array too big **/
-        if (i<nbWords) {
-            short[] smaller = new short[i];
-            System.arraycopy(value, 0, smaller,0,i);
-            value = smaller;
-        }
-
-        return value ;
-    }
-
 
     /**
      * Big Number Constructor
@@ -225,9 +137,11 @@ public class BigNumber {
 
     /**
      * Safe Big Number Constructor
+     * Does not check if stacks are correct
      * Array of 32 bits Integer given in input
      * Radix 10 !!
      * @param value
+     * @param bool
      */
     private BigNumber(int[] value,boolean bool) {
 
@@ -240,25 +154,25 @@ public class BigNumber {
     /** Constant BigNumbers for Montgomery Multiplication **/
     // N
     public static final BigNumber MGY_N = new BigNumber(new int[]{156,774238246,875915835,445233811,147609873,343164059,43855105,640486188,519457028,233998002,402904757,751807605,965928975,478596347,242014672,224727067,633004297,628621362,248433746,107510884,59233724,941256971,566153218,713448788,958681155,977990828,154489255,5329847,271334645,254216377,998443414,892683976,459272966,32042624,948290751},true);
-    //public static final BigNumber MGY_N = new BigNumber(new int[]{259},true);
+
 
     // R so that N < R
     public static final BigNumber MGY_R = new BigNumber(new int[]{1000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000},true);
-    //public static final BigNumber MGY_R = new BigNumber(new int[]{1000},true);
+
 
     // R² mod N
     public static final BigNumber MGY_R2modN = new BigNumber(new int[]{92,798925215,233083812,673353035,55163940,314047691,642629923,513530301,947487382,655125673,44188687,546889317,664932548,994412820,492643745,381141618,263739211,910740182,544323134,862426706,103941302,404142957,103082814,349023973,51723872,383480128,214438229,607259635,988317976,363986289,766043178,811423125,396681631,497769849,35074342},true);
-    //public static final BigNumber MGY_R2modN = new BigNumber(new int[]{1},true);
+
 
     // V = - N^-1 mod R
     public static final BigNumber MGY_V = new BigNumber(new int[]{147,23683612,895283756,207020407,708841813,901693073,581443767,279168651,495753676,708816823,421540743,275385867,627569778,881477607,143849212,681550052,866268668,936159852,722149471,612780495,424587630,129672095,835032476,977598301,540446435,595609594,990402834,732036243,59778302,592270889,714616348,891031730,521372416,880983684,615853249},true);
-    //public static final BigNumber MGY_V = new BigNumber(new int[]{861},true);
 
     // ONE
     public static final BigNumber ONE = new BigNumber(new int[]{1});
 
+
     /**
-     * Sum of two Big Numbers
+     * Sum of this with bigNumber
      * Create a new Big Number whose value is
      * equal to the sum of the two Big Numbers' value
      * stored into the Array of 32 bits Integer
@@ -271,7 +185,7 @@ public class BigNumber {
 
 
     /**
-     * Modular Addition of two Big Numbers
+     * Modular Addition of two Big Numbers mod mod
      * Create a new Big Number whose value is
      * equal to the modular sum of the two Big Numbers'
      * value stored into the Array of 32 bits Integer
@@ -282,7 +196,7 @@ public class BigNumber {
     public BigNumber modularAddition(BigNumber bigNumber, BigNumber mod) {return new BigNumber(modularAdd(this.value, bigNumber.getValue(), mod.getValue()));}
 
     /**
-     * Substract of two Big Numbers
+     * Substract of this with bigNumber
      * Create a new Big Number whose value is
      * equal to the substract of the two Big Numbers' value
      * stored into the Array of 32 bits Integer
@@ -293,7 +207,7 @@ public class BigNumber {
 
 
     /**
-     * Modular Substract of two Big Numbers
+     * Modular Substract of this with bigNumber mod mod
      * Create a new Big Number whose value is
      * equal to the modular substract of the two Big Numbers'
      * value stored into the Array of 32 bits Integer
@@ -304,7 +218,7 @@ public class BigNumber {
     public BigNumber modularSubstract(BigNumber bigNumber, BigNumber mod) {return new BigNumber(modularSub(this.value, bigNumber.getValue(), mod.getValue()));}
 
     /**
-     * Multiplication of two Big Numbers
+     * Product of this with bigNumber
      * Create a new Big Number whose value is equal
      * to the multiplication of the two Big Numbers'
      * value stored into the Array of 32 bits Integer
@@ -315,7 +229,7 @@ public class BigNumber {
 
 
     /**
-     * Montgomery Multiplication of two Big Numbers
+     * Modular Multiplication of this with bigNumber mod MGY_N
      * @param bigNumber
      * @return
      */
@@ -460,7 +374,6 @@ public class BigNumber {
         if (bg.compareValue(mod)==0) {
             return new int[1];
         }
-
         return bg.getValue();
     }
 
@@ -510,8 +423,6 @@ public class BigNumber {
             System.arraycopy(res, tp, smaller,0,trueSize(res));
             return smaller;
         }
-
-
         return res;
     }
 
@@ -562,22 +473,22 @@ public class BigNumber {
 
     }
 
-
     /**
      * Multiplication of two 32 bits Integer Array
+     * "Grade School" Algoritm
      * @param a
      * @param b
      * @return product
      */
     public int[] multiply(int[] a, int[] b) {
 
-        // Get size of each number
+        /** Lengths **/
         int len1 = a.length;
         int len2 = b.length;
 
         ArrayList<Integer> result = new ArrayList<>();
 
-        // Intermediate result array
+        /** Intermediate result array **/
         long interResult[] = new long[len1+len2];
 
         int index1 = 0;
@@ -674,7 +585,7 @@ public class BigNumber {
         return new BigNumber(sb.toString());
     }
 
-    /** (In progress)
+    /**
      * Montgomery Multiplication of this with b
      * Used for performance enhancement
      * Algorithm :
@@ -684,15 +595,14 @@ public class BigNumber {
      * Let V = - N^(-1) mod R
      *
      * Let A and B be the Montgomery representations of a and b as this :
-     * A = a.R mod N
-     * B = b.R mod N
+     * A = a.R mod N = A montgomeryOperator R² mod N
+     * B = b.R mod N = B montgomeryOperator R² mod N
      *
-     * C = A.B.R^(-1) mod N = T.R^(-1) mod N = (T + T.V.N)/R mod N
-     *
+     * C = A montgomeryOperator B
      * Finally,
-     * c = C.R^(-1) mod N = (T + T.V.N)/R mod N = a.b mod N
+     * c = a.b mod N = C montgomeryOperator 1
      *
-     * /!\ N has a default value !!
+     * /!\ N,R,V and R² mod have a precalculated value !!
      * @param b
      * @return Montgomery Multiplication value into Arrays of 32 bits Integer
      */
@@ -732,46 +642,9 @@ public class BigNumber {
         // m = (s + t * n)
         BigNumber m = (s.add(t.mul(N)));
         // u = m/r
-        // pb avec div10 !!
         BigNumber u = m.div10(R);
         // if u>=n : return u-n | else : return u
         return (compareValue(u.getValue(),N.getValue())>=0) ? u.substract(N) : u ;
-    }
-
-    /**
-     * To pick the right value for R
-     * in the Montgomery Multiplication
-     * Implemented for 1024 bits values for n !
-     * @param n
-     * @return
-     */
-    private static int[] pickRMontgomeryMul(int[] n) {
-        int i = 2;
-        while (compareValue(preCalculatedR[i],n)==-1 && i<7) {
-            i++;
-        }
-        if (compareValue(preCalculatedR[i],n)==-1) {
-            throw new ArithmeticException("Mod n might not be a 1024 bits number !!");
-        }
-        return preCalculatedR[i];
-    }
-
-    /**
-     * To pick the right exposant for R
-     * in the Montgomery Multiplication
-     * Implemented for 1024 bits values for n !
-     * @param n
-     * @return
-     */
-    private static int findRExpMontgomeryMul(int[] n) {
-        int i = 2;
-        while (compareValue(preCalculatedR[i],n)==-1 && i<7) {
-            i++;
-        }
-        if (compareValue(preCalculatedR[i],n)==-1) {
-            throw new ArithmeticException("Mod n might not be a 1024 bits number !!");
-        }
-        return i+1020;
     }
 
     /**
@@ -1168,7 +1041,6 @@ public class BigNumber {
         return 0;
     }
 
-
     /**
      * Return a concatenate String of the value based
      * on the Array of 32 bits Integer given in input
@@ -1230,75 +1102,10 @@ public class BigNumber {
         return str;
     }
 
-    /**
-     * Estimation of the number of digits of a multiplication
-     * @param x
-     * @param y
-     * @return
-     */
-    public int numberDigitsMultiplication(int x, int y) {
-        return (int) Math.floor(Math.log10(x) + Math.log10(y)) +1;
-    }
-
-
-    /**
-     * Returns a new BigNumber made of the n lower int of the "this"
-     * Used for Karatsuba Multiplication
-     * @param n
-     * @return
-     */
-    public BigNumber getLower(int n) {
-        int len = value.length;
-
-        if (len < n) {
-            return this;
-
-        }
-        int lowerInts[] = new int[n];
-        System.arraycopy(value, len-n, lowerInts,0,n);
-
-        return new BigNumber(lowerInts);
-    }
-
-    /**
-     * Returns a new BigNumber made of the n upper int of the "this"
-     * Used for Karatsuba Multiplication
-     * @param n
-     * @return
-     */
-    public BigNumber getUpper(int n) {
-        int len = value.length;
-
-        if (len < n) {
-            return this;
-        }
-        int upperInts[] = new int[n];
-        System.arraycopy(value,0,upperInts,0, len-n);
-
-        return new BigNumber(upperInts);
-
-    }
-
 
     /** Getters **/
 
-    public int getNbDigits() {
-        return nbDigits;
-    }
+    public int[] getValue() {return value;}
+    public String getStrValue() {return strValue;}
 
-    public int getNbBits() {
-        return nbBits;
-    }
-
-    public int getNbWords() {
-        return nbWords;
-    }
-
-    public int[] getValue() {
-        return value;
-    }
-
-    public String getStrValue() {
-        return strValue;
-    }
 }
