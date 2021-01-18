@@ -2,6 +2,7 @@ package number;
 
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 
 public class BigNumber {
 
@@ -113,7 +114,7 @@ public class BigNumber {
         this.nbBits = (int) (Math.ceil(((float) (this.nbDigits * Math.log(10) / Math.log(2))))+1);
 
         /** Number of 32bits words necessary **/
-        this.nbWords = (int) (Math.ceil(((float) (this.nbBits) / (float) (WORD_SIZE)))+5);
+        this.nbWords = (int) (Math.ceil(((float) (this.nbBits) / (float) (WORD_SIZE)))+10);
 
         /** Words creation **/
         this.value = new int[this.nbWords];
@@ -212,7 +213,7 @@ public class BigNumber {
      * Radix 10 !!
      * @param value
      */
-    private BigNumber(int[] value) {
+    public BigNumber(int[] value) {
 
         this.value = value;
         this.strValue = toString(this.value);
@@ -222,11 +223,39 @@ public class BigNumber {
         this.nbWords = this.value.length;
     }
 
+    /**
+     * Safe Big Number Constructor
+     * Array of 32 bits Integer given in input
+     * Radix 10 !!
+     * @param value
+     */
+    private BigNumber(int[] value,boolean bool) {
+
+        this.value = value;
+        this.strValue = toString(this.value);
+        this.nbWords = this.value.length;
+    }
+
 
     /** Constant BigNumbers for Montgomery Multiplication **/
-    //public static final BigNumber MGY_N = new BigNumber("123");
-    //public static final BigNumber MGY_R = new BigNumber(pickRMontgomeryMul(MGY_N.getValue()));
-    //public static final BigNumber MGY_V = new BigNumber();
+    // N
+    public static final BigNumber MGY_N = new BigNumber(new int[]{156,774238246,875915835,445233811,147609873,343164059,43855105,640486188,519457028,233998002,402904757,751807605,965928975,478596347,242014672,224727067,633004297,628621362,248433746,107510884,59233724,941256971,566153218,713448788,958681155,977990828,154489255,5329847,271334645,254216377,998443414,892683976,459272966,32042624,948290751},true);
+    //public static final BigNumber MGY_N = new BigNumber(new int[]{259},true);
+
+    // R so that N < R
+    public static final BigNumber MGY_R = new BigNumber(new int[]{1000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000},true);
+    //public static final BigNumber MGY_R = new BigNumber(new int[]{1000},true);
+
+    // R² mod N
+    public static final BigNumber MGY_R2modN = new BigNumber(new int[]{92,798925215,233083812,673353035,55163940,314047691,642629923,513530301,947487382,655125673,44188687,546889317,664932548,994412820,492643745,381141618,263739211,910740182,544323134,862426706,103941302,404142957,103082814,349023973,51723872,383480128,214438229,607259635,988317976,363986289,766043178,811423125,396681631,497769849,35074342},true);
+    //public static final BigNumber MGY_R2modN = new BigNumber(new int[]{1},true);
+
+    // V = - N^-1 mod R
+    public static final BigNumber MGY_V = new BigNumber(new int[]{147,23683612,895283756,207020407,708841813,901693073,581443767,279168651,495753676,708816823,421540743,275385867,627569778,881477607,143849212,681550052,866268668,936159852,722149471,612780495,424587630,129672095,835032476,977598301,540446435,595609594,990402834,732036243,59778302,592270889,714616348,891031730,521372416,880983684,615853249},true);
+    //public static final BigNumber MGY_V = new BigNumber(new int[]{861},true);
+
+    // ONE
+    public static final BigNumber ONE = new BigNumber(new int[]{1});
 
     /**
      * Sum of two Big Numbers
@@ -282,18 +311,15 @@ public class BigNumber {
      * @param bigNumber
      * @return
      */
-    public BigNumber mul(BigNumber bigNumber) { return new BigNumber(mul(this.value, bigNumber.getValue())); }
+    public BigNumber mul(BigNumber bigNumber) { return new BigNumber(multiply(this.value, bigNumber.getValue())); }
 
 
     /**
      * Montgomery Multiplication of two Big Numbers
      * @param bigNumber
-     * @param N
-     * @param R
-     * @param V
      * @return
      */
-    public BigNumber mulMontgomery(BigNumber bigNumber, BigNumber N, BigNumber R, BigNumber V ) { return new BigNumber(mulMontgomery(this.value, bigNumber.getValue(),N,R,V));}
+    public BigNumber mulMontgomery(BigNumber bigNumber) { return this.multiMontgomery(bigNumber);};
 
 /****************************************************************************/
 
@@ -538,56 +564,123 @@ public class BigNumber {
 
 
     /**
-     * Multiplication of two Arrays of 32 bits Integer
-     * @param x
-     * @param y
-     * @return product value into Arrays of 32 bits Integer
+     * Multiplication of two 32 bits Integer Array
+     * @param a
+     * @param b
+     * @return product
      */
-    public int[] mul(int[] x, int[] y) {
+    public int[] multiply(int[] a, int[] b) {
 
-        /** Suppose that x is larger than y **/
-        /** If not **/
-        if (x.length < y.length) {
-            int[] temp = x;
-            x = y;
-            y = temp;
-        }
+        // Get size of each number
+        int len1 = a.length;
+        int len2 = b.length;
 
-        int[] res = new int[x.length + y.length];
-        int xCursor = x.length-1;
-        int yCursor = y.length-1;
-        long product = 0;
+        ArrayList<Integer> result = new ArrayList<>();
 
+        // Intermediate result array
+        long interResult[] = new long[len1+len2];
 
-        for (int i = xCursor; i > -1; i--) {
+        int index1 = 0;
+        int index2 = 0;
 
-            int[] low = new int[x.length+y.length];
+        for (int i =len1-1; i>=0;i--){
+            long carry = 0;
+            index2 = 0;
 
-            for (int j = yCursor; j > -1; j--) {
+            for (int j=len2-1; j>=0; j--){
 
-                int[] high = new int[x.length+y.length];
-                product = (long) x[i] * y[j];
-                if (product > 99999999) {
-                    high[i+j] = (int) ((long) product / SUPER_RADIX);
-                    high[i+j+1] = (int) ((long) product % SUPER_RADIX);
-                }
-                else {
-                    high[i+j]=(int) product;
-                }
-                low = add(low,high);
+                long product = (long) a[i] * b[j] + interResult[index1+index2] + carry;
+                carry = product / SUPER_RADIX;
+
+                interResult[index1+index2] = product % SUPER_RADIX;
+                index2++;
             }
-            res = add(res,low);
+            if (carry>0) {
+                interResult[index1+index2] += carry;
+            }
+            index1++;
         }
-        return res;
+        int index = interResult.length-1;
+        while(index >=0 && interResult[index]==0) {
+            index--;
+        }
+        if (index == -1) {
+            return new int[0];
+        }
+
+        while(index >=0) {
+            result.add((int) interResult[index--]);
+        }
+
+        return result.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+
+    /**
+     * Return this mod r
+     * In the case where r = 10^k !!
+     * This condition is not checked !
+     * @param mod
+     * @return
+     */
+    public BigNumber mod10(BigNumber mod) {
+
+        /** Find k **/
+        int k = (mod.getValue().length-1)*9 + String.valueOf(mod.getValue()[0]).length() - 1;
+        int len = this.getValue().length;
+
+        int threshold = (int) (Math.ceil((float) k/9));
+        StringBuilder sb = new StringBuilder();
+
+        /** Nb of digits to keep for the higher word **/
+        int nb = k - (threshold-1)*9;
+        StringBuilder str = new StringBuilder(String.valueOf(this.getValue()[len-threshold]));
+        str.delete(0,str.length()-nb);
+        sb.append(str);
+
+        /** Add the digits from the stacks remaining **/
+        for (int i=len-threshold+1;i<len;i++){
+            sb.append(this.stackToString(i));
+        }
+    return new BigNumber(sb.toString());
+    }
+
+    /**
+     * Do this divided by 10^k
+     * @param div
+     * @return
+     */
+    public BigNumber div10(BigNumber div) {
+
+        /** Find k **/
+        int k = (div.getValue().length-1)*9 + String.valueOf(div.getValue()[0]).length() - 1;
+        int len = this.getValue().length;
+
+        int threshold = (int) (Math.ceil((float) k/9));
+        StringBuilder sb = new StringBuilder();
+
+        /** Add the digits from the stacks ahead **/
+        for (int i=0;i<len - threshold;i++){
+            sb.append(this.stackToString(i));
+        }
+
+        /** Add the nb digits from the stack limit **/
+        /** Nb of digits to unkeep for the word **/
+        int nb = k - (threshold-1)*9;
+        StringBuilder str = new StringBuilder(String.valueOf(stackToString(len-threshold)));
+        str.delete(str.length()- nb,str.length());
+        sb.append(str);
+
+        return new BigNumber(sb.toString());
     }
 
     /** (In progress)
-     * Montgomery Multiplication of two Arrays of 32 bits Integer
+     * Montgomery Multiplication of this with b
      * Used for performance enhancement
      * Algorithm :
      *
      * Let c = a.b mod N with a,b,N 1024 bits, and C its Montgomery representation
-     * Pick R = 2^k with 2^(k-1) <= N <= 2^k
+     * Pick R = 10^k with 10^(k-1) <= N <= 10^k
      * Let V = - N^(-1) mod R
      *
      * Let A and B be the Montgomery representations of a and b as this :
@@ -600,33 +693,26 @@ public class BigNumber {
      * c = C.R^(-1) mod N = (T + T.V.N)/R mod N = a.b mod N
      *
      * /!\ N has a default value !!
-     * @param a
      * @param b
      * @return Montgomery Multiplication value into Arrays of 32 bits Integer
      */
-    public int[] mulMontgomery(int[] a, int[] b, BigNumber N,BigNumber R, BigNumber V) {
+    public BigNumber multiMontgomery(BigNumber b) {
 
-        // A and B Montgomery Representations
+        /** this and B Montgomery Representations **/
+
         // A = a.R mod N = a montgomeryOperator r² mod n (with r² mod N already precalculated)
-        int[] A = mod(mul(a, R.getValue()), N.getValue());
+        BigNumber A = this.montgomeryOperator(MGY_R2modN, MGY_N, MGY_R, MGY_V);
         // B = b.R mod N = b montgomeryOperator r² mod n (with r² mod N already precalculated)
-        int[] B = mod(mul(b,R.getValue()), N.getValue());
+        BigNumber B = b.montgomeryOperator(MGY_R2modN, MGY_N, MGY_R, MGY_V);
 
-        // s = A*B
-        int[] s = mul(A,B);
+        // Let c = a*b mod N and C = phi(c) its Montgomery representation then
+        // phi (a*b mod N) = phi(c) = C = phi(a) montgomeryOperator phi(b)
+        BigNumber C = A.montgomeryOperator(B,MGY_N, MGY_R, MGY_V);
 
-        // t = (s*v) mod r
-        int[] t = mod(mul(s,V.getValue()),R.getValue());
+        // phi(c) montgomeryOperator 1 = phi(c)*r^-1 mod N = c*r*r^-1 mod N = c
+        BigNumber c = C.montgomeryOperator(ONE,MGY_N, MGY_R, MGY_V);
 
-        // m = (s + t * n)
-        int[] m = add(s,mul(t, N.getValue()));
-
-        // u = m/r
-        int[] u = leftShift(m,findRExpMontgomeryMul(R.getValue()));
-
-        // if u>=n : return u-n | else : return u
-        return (compareValue(u,N.getValue())>=0) ? substract(u,N.getValue()) : u ;
-
+        return c;
     }
 
     /**
@@ -641,12 +727,13 @@ public class BigNumber {
 
         // s = this * b
         BigNumber s = this.mul(b);
-        // t = (s * v) mod r = (s * v) >> k ????
-        BigNumber t = new BigNumber(rightShift(s.mul(V).getValue(),findRExpMontgomeryMul(R.getValue())));
+        // t = (s * v) mod r  : given r = 10^k we take the k first digits from right to left in this representation
+        BigNumber t = (s.mul(V)).mod10(R);
         // m = (s + t * n)
         BigNumber m = (s.add(t.mul(N)));
         // u = m/r
-        BigNumber u = new BigNumber(leftShift(m.getValue(),findRExpMontgomeryMul(R.getValue())));
+        // pb avec div10 !!
+        BigNumber u = m.div10(R);
         // if u>=n : return u-n | else : return u
         return (compareValue(u.getValue(),N.getValue())>=0) ? u.substract(N) : u ;
     }
@@ -1109,6 +1196,22 @@ public class BigNumber {
             str = strTemp + " " + str;
         }
         str = (String.valueOf(res[0] + remainder)) + " " + str;
+        return str;
+    }
+
+    /**
+     * Return the string of the stack with the index i of this
+     * Add the leading zeros !
+     * @param index
+     * @return
+     */
+    public String stackToString(int index) {
+        String str = "";
+
+        str = String.valueOf(this.getValue()[index]);
+        if (str.length() < 9) {
+            str = makeZeros(DIGITS_PER_INT - str.length()) + str;
+        }
         return str;
     }
 
