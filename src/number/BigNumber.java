@@ -1,5 +1,6 @@
 package number;
 import java.util.ArrayList;
+import java.util.function.BiFunction;
 
 /**
  * @author Eric
@@ -48,8 +49,8 @@ public class BigNumber {
      */
     public BigNumber()
     {
-        this.nbDigits = 0;
-        this.value = new int[1];
+        this.value = ONE.getValue();
+        this.strValue = toString(this.value);
     }
 
     /**
@@ -84,7 +85,7 @@ public class BigNumber {
         this.nbBits = (int) (Math.ceil(((float) (this.nbDigits * Math.log(10) / Math.log(2))))+1);
 
         /** Number of 32bits words necessary **/
-        this.nbWords = (int) (Math.ceil(((float) (this.nbBits) / (float) (WORD_SIZE)))+10);
+        this.nbWords = (int) (Math.ceil(((float) (this.nbBits) / (float) (WORD_SIZE)))+100);
 
         /** Words creation **/
         this.value = new int[this.nbWords];
@@ -159,6 +160,8 @@ public class BigNumber {
     // R so that N < R
     public static final BigNumber MGY_R = new BigNumber(new int[]{1000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000},true);
 
+    // R mod N
+    public static final BigNumber MGY_RmodN = new BigNumber(new int[]{59,354570518,744504987,328597133,114340759,941015645,736869366,157082868,883257830,596011985,582571453,489154364,204426147,128421916,547911966,651637594,201974214,228271826,509397523,354934695,644597650,352458170,603080687,719307266,247913064,132055031,73064469,968020916,371992128,474701732,9339510,643896141,244362203,807744250,310255494},true);
 
     // R² mod N
     public static final BigNumber MGY_R2modN = new BigNumber(new int[]{92,798925215,233083812,673353035,55163940,314047691,642629923,513530301,947487382,655125673,44188687,546889317,664932548,994412820,492643745,381141618,263739211,910740182,544323134,862426706,103941302,404142957,103082814,349023973,51723872,383480128,214438229,607259635,988317976,363986289,766043178,811423125,396681631,497769849,35074342},true);
@@ -169,6 +172,9 @@ public class BigNumber {
 
     // ONE
     public static final BigNumber ONE = new BigNumber(new int[]{1});
+
+    // ZERO
+    public static final BigNumber ZERO = new BigNumber(new int[]{0});
 
 
     /**
@@ -255,6 +261,17 @@ public class BigNumber {
      */
     public int[] add(int[] x, int[] y) {
 
+        /** If equals to 0 **/
+        if (isZero(x) && isZero(y)) {
+            return ZERO.getValue();
+        }
+        if (compareValue(x,ZERO.getValue())==0) {
+            return y;
+        }
+        if (compareValue(y, ZERO.getValue())==0) {
+            return x;
+        }
+
         /** Suppose that x is larger than y **/
         /** If not **/
         if (x.length < y.length) {
@@ -300,44 +317,6 @@ public class BigNumber {
         return res;
     }
 
-    /**
-     * Sum of a Big Number with a 32 bits Integer
-     * @param x
-     * @param y
-     * @return sum value into Array of 32 bits Integer and a 32 bits Integer
-     */
-    private int[] add(int[] x, int y) {
-
-
-        /** Initialize some variables **/
-        int xIndex = x.length;
-        int res[] = new int[xIndex];
-        long sum = 0;
-
-        sum = (long) x[--xIndex] + y + (sum / SUPER_RADIX);
-        res[xIndex] = (int) (sum % SUPER_RADIX);
-
-
-        /** Check if carry to propagate **/
-        boolean carry = (sum / SUPER_RADIX !=0);
-        while (carry && xIndex > 0) {
-            carry = ((res[--xIndex] = (int) (x[xIndex] + 1)) == 0);
-        }
-
-        /** Fill with the remaining values of x if not reached **/
-        while (xIndex > 0) {
-            res[--xIndex] = x[xIndex];
-        }
-
-        /** Grow result if necessary **/
-        if (carry) {
-            int bigger[] = new int[res.length + 1];
-            System.arraycopy(res, 0, bigger, 1, res.length);
-            bigger[0] = 1;
-            return bigger;
-        }
-        return res;
-    }
 
     /**
      * Do modular addition between two Big Numbers
@@ -349,7 +328,17 @@ public class BigNumber {
      */
     public int[] modularAdd(int[] x, int[] y, int[] mod) {
 
+        /** If equals to 0 **/
+        if (compareValue(x, ZERO.getValue())==0 && compareValue(y,ZERO.getValue())==0) {
+            return ZERO.getValue();
+        }
+
         BigNumber bg = new BigNumber(add(x,y));
+
+        /** Sum equals to mod **/
+        if (bg.compareValue(mod)==0) {
+            return ZERO.getValue();
+        }
 
         /** Sum greater than mod **/
         if (bg.compareValue(mod)==1) {
@@ -370,10 +359,7 @@ public class BigNumber {
             return bg.getValue();
 
         }
-        /** Sum equals to mod **/
-        if (bg.compareValue(mod)==0) {
-            return new int[1];
-        }
+
         return bg.getValue();
     }
 
@@ -385,6 +371,17 @@ public class BigNumber {
      * @return substracted value into Arrays of 32 bits Integer
      */
     public int[] substract(int[] big, int[] small) {
+
+        /** If equals to 0 **/
+        if (isZero(big) && isZero(small)) {
+            return ZERO.getValue();
+        }
+        if (compareValue(big,ZERO.getValue())==0) {
+            return small;
+        }
+        if (compareValue(small, ZERO.getValue())==0) {
+            return big;
+        }
 
         /** Suppose that x is bigger than y **/
         /** If not **/
@@ -451,7 +448,7 @@ public class BigNumber {
 
         /** Sum equals to mod **/
         if (compareValue(a, mod)==0) {
-            return substract(a,mod);
+            return ZERO.getValue();
         }
 
         /** Sum greater than mod **/
@@ -481,6 +478,11 @@ public class BigNumber {
      * @return product
      */
     public int[] multiply(int[] a, int[] b) {
+
+        /** If equals to 0 **/
+        if (isZero(a) || isZero(b)) {
+            return ZERO.getValue();
+        }
 
         /** Lengths **/
         int len1 = a.length;
@@ -522,19 +524,27 @@ public class BigNumber {
         while(index >=0) {
             result.add((int) interResult[index--]);
         }
-
+        int[] temp = result.stream().mapToInt(Integer::intValue).toArray();
         return result.stream().mapToInt(Integer::intValue).toArray();
     }
 
 
     /**
-     * Return this mod r
-     * In the case where r = 10^k !!
+     * Return this mod mod
+     * In the case where mod = 10^k !!
      * This condition is not checked !
      * @param mod
      * @return
      */
     public BigNumber mod10(BigNumber mod) {
+
+        /** If equals mod **/
+        if (this.compareTo(mod)==0) {
+            return ZERO;
+        }
+        if (this.compareTo(mod)==-1) {
+            return this;
+        }
 
         /** Find k **/
         int k = (mod.getValue().length-1)*9 + String.valueOf(mod.getValue()[0]).length() - 1;
@@ -640,12 +650,59 @@ public class BigNumber {
         // t = (s * v) mod r  : given r = 10^k we take the k first digits from right to left in this representation
         BigNumber t = (s.mul(V)).mod10(R);
         // m = (s + t * n)
+        BigNumber temp = t.mul(N);
         BigNumber m = (s.add(t.mul(N)));
         // u = m/r
         BigNumber u = m.div10(R);
         // if u>=n : return u-n | else : return u
         return (compareValue(u.getValue(),N.getValue())>=0) ? u.substract(N) : u ;
     }
+
+
+    /**
+     * Return this^k
+     * Use the algorithm Square And Multiply combined with Montgomery's reduction
+     * @param k
+     * @return
+     */
+    public BigNumber pow(BigNumber k) {
+
+        // A = phi(this)
+        BigNumber A = this.montgomeryOperator(MGY_R2modN, MGY_N, MGY_R, MGY_V);
+
+        // P = A ^ montgomeryOperator k
+        BigNumber P = A.squareAndMultiply(k);
+
+        //a^k = P.r^-1 mod N = P montgomeryOperator 1
+        BigNumber res = P.montgomeryOperator(ONE,MGY_N, MGY_R, MGY_V);
+
+        return res;
+    }
+
+
+    /**
+     * Return this^k
+     * @param k
+     * @return
+     */
+    public BigNumber squareAndMultiply(BigNumber k) {
+
+
+            /** Init **/
+            BigNumber P = this;
+            BigNumber i = ONE;
+
+            while (i.compareTo(k)==-1) {
+                // P montgomeryOperator P = P.P.R^-1 mod N
+                P = P.montgomeryOperator(P,MGY_N, MGY_R, MGY_V);
+                // P = A² for the first loop and so on
+                // P montgomeryOperator R = (P.P.R^-1 mod N) * R² . R^-1 mod N = P² mod N
+                P = P.montgomeryOperator(MGY_R2modN, MGY_N, MGY_R, MGY_V);
+                i = i.add(ONE);
+            }
+            return P;
+        }
+
 
     /**
      * Returns GCD of this and bg
@@ -1107,5 +1164,6 @@ public class BigNumber {
 
     public int[] getValue() {return value;}
     public String getStrValue() {return strValue;}
+    public int getNbBits() {return nbBits;}
 
 }
