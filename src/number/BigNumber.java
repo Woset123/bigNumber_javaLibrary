@@ -3,6 +3,10 @@ import java.util.ArrayList;
 import java.util.function.BiFunction;
 
 /**
+ * Big Numbers implementation as part of ISMIN courses
+ * Handle basic operations such as sum, substract, product, modular sum, modular addition, modular multiplication
+ * but also some functions as gcd or comparaisons.
+ *
  * @author Eric
  * @version 1.0
  */
@@ -13,13 +17,7 @@ public class BigNumber {
     /** Size of the input **/
     int nbDigits;
 
-    /**
-     * Maximal Binary Size (radix 10)
-     * nbBits = nbDigits * log(10) / log(2)
-     */
-    int nbBits;
-
-    /** Number of 32 bits words possible given the nbBits **/
+    /** Number of 9 digits words possible **/
     int nbWords;
 
     /** Value of the Big Number **/
@@ -27,9 +25,6 @@ public class BigNumber {
 
     /** Primitive used to store the final value into a String **/
     String strValue="";
-
-    /** Size of a Word **/
-    final int WORD_SIZE = 32;
 
     /** Number of digits (for radix equals to 10)
      * that can fit into a Java Integer without "going negative", i.e., the
@@ -57,7 +52,8 @@ public class BigNumber {
      * Big Number Constructor
      * String value given in input
      * Radix 10 !!
-     * @param val
+     * @param val - string input of the number
+     * @throws NumberFormatException - when no input given !
      */
     public BigNumber(String val) {
 
@@ -65,12 +61,11 @@ public class BigNumber {
         if (val.length() == 0)
             throw new NumberFormatException("Zero length !!");
         createStack(val);
-
     }
 
     /**
      * Shapes the stacks based on the String given in input
-     * @param val
+     * @param val - string input of the number
      */
     public void createStack(String val) {
         /** Erase spaces **/
@@ -79,13 +74,8 @@ public class BigNumber {
         /** Number of Digits in the input given **/
         this.nbDigits = val.length();
 
-        /** Number of bits required
-         * Add one so that the space allocated will never be too small
-         */
-        this.nbBits = (int) (Math.ceil(((float) (this.nbDigits * Math.log(10) / Math.log(2))))+1);
-
-        /** Number of 32bits words necessary **/
-        this.nbWords = (int) (Math.ceil(((float) (this.nbBits) / (float) (WORD_SIZE)))+100);
+        /** Number of 9 digits words necessary **/
+        this.nbWords = (int) (Math.ceil(((float) (this.nbDigits) / (float) (DIGITS_PER_INT))));
 
         /** Words creation **/
         this.value = new int[this.nbWords];
@@ -124,7 +114,9 @@ public class BigNumber {
      * Big Number Constructor
      * Array of 32 bits Integer given in input
      * Radix 10 !!
-     * @param value
+     * Call the createStack function to be sure the format
+     * given is correct
+     * @param value - 32 bits Integer Array corresponding to the number
      */
     public BigNumber(int[] value) {
 
@@ -138,11 +130,11 @@ public class BigNumber {
 
     /**
      * Safe Big Number Constructor
-     * Does not check if stacks are correct
+     * Do not check if stacks are correct
      * Array of 32 bits Integer given in input
      * Radix 10 !!
-     * @param value
-     * @param bool
+     * @param value - 32 bits Integer Array corresponding to the number
+     * @param bool - boolean to overload the method, no impact according to its value
      */
     private BigNumber(int[] value,boolean bool) {
 
@@ -152,38 +144,40 @@ public class BigNumber {
     }
 
 
-    /** Constant BigNumbers for Montgomery Multiplication **/
-    // N
+    /** Constant BigNumber N for Montgomery Multiplication **/
     public static final BigNumber MGY_N = new BigNumber(new int[]{156,774238246,875915835,445233811,147609873,343164059,43855105,640486188,519457028,233998002,402904757,751807605,965928975,478596347,242014672,224727067,633004297,628621362,248433746,107510884,59233724,941256971,566153218,713448788,958681155,977990828,154489255,5329847,271334645,254216377,998443414,892683976,459272966,32042624,948290751},true);
 
 
-    // R so that N < R
+    /** Constant BigNumber R for Montgomery Multiplication **/
     public static final BigNumber MGY_R = new BigNumber(new int[]{1000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000,000000000},true);
 
-    // R mod N
+    /** Constant BigNumber R mod N for Montgomery Multiplication **/
     public static final BigNumber MGY_RmodN = new BigNumber(new int[]{59,354570518,744504987,328597133,114340759,941015645,736869366,157082868,883257830,596011985,582571453,489154364,204426147,128421916,547911966,651637594,201974214,228271826,509397523,354934695,644597650,352458170,603080687,719307266,247913064,132055031,73064469,968020916,371992128,474701732,9339510,643896141,244362203,807744250,310255494},true);
 
-    // R² mod N
+    /** Constant BigNumber R² mod N for Montgomery Multiplication **/
     public static final BigNumber MGY_R2modN = new BigNumber(new int[]{92,798925215,233083812,673353035,55163940,314047691,642629923,513530301,947487382,655125673,44188687,546889317,664932548,994412820,492643745,381141618,263739211,910740182,544323134,862426706,103941302,404142957,103082814,349023973,51723872,383480128,214438229,607259635,988317976,363986289,766043178,811423125,396681631,497769849,35074342},true);
 
 
     // V = - N^-1 mod R
+    /** Constant BigNumber V for Montgomery Multiplication **/
     public static final BigNumber MGY_V = new BigNumber(new int[]{147,23683612,895283756,207020407,708841813,901693073,581443767,279168651,495753676,708816823,421540743,275385867,627569778,881477607,143849212,681550052,866268668,936159852,722149471,612780495,424587630,129672095,835032476,977598301,540446435,595609594,990402834,732036243,59778302,592270889,714616348,891031730,521372416,880983684,615853249},true);
 
     // ONE
+    /** Constant BigNumber equals to 1 **/
     public static final BigNumber ONE = new BigNumber(new int[]{1});
 
     // ZERO
+    /** Constant BigNumber equals to 0 **/
     public static final BigNumber ZERO = new BigNumber(new int[]{0});
 
 
     /**
-     * Sum of this with bigNumber
+     * Return Sum of this with bigNumber
      * Create a new Big Number whose value is
      * equal to the sum of the two Big Numbers' value
      * stored into the Array of 32 bits Integer
-     * @param bigNumber
-     * @return
+     * @param bigNumber - BigNumber to add to this
+     * @return a BigNumber from this + bigNumber
      */
     public BigNumber add(BigNumber bigNumber) {
         return new BigNumber(add(this.value, bigNumber.getValue()));
@@ -191,62 +185,69 @@ public class BigNumber {
 
 
     /**
-     * Modular Addition of two Big Numbers mod mod
+     * Modular Addition of this mod m
      * Create a new Big Number whose value is
      * equal to the modular sum of the two Big Numbers'
      * value stored into the Array of 32 bits Integer
-     * @param bigNumber
-     * @param mod
-     * @return
+     * @param bigNumber - BigNumber to add
+     * @param m - BigNumber modulo
+     * @return a BigNummber from this + bigNumber mod m
      */
-    public BigNumber modularAddition(BigNumber bigNumber, BigNumber mod) {return new BigNumber(modularAdd(this.value, bigNumber.getValue(), mod.getValue()));}
+    public BigNumber modularAddition(BigNumber bigNumber, BigNumber m) {return new BigNumber(modularAdd(this.value, bigNumber.getValue(), m.getValue()));}
 
     /**
-     * Substract of this with bigNumber
+     * Substract of max(this,bigNumber) with min(this,bigNumber)
      * Create a new Big Number whose value is
      * equal to the substract of the two Big Numbers' value
      * stored into the Array of 32 bits Integer
-     * @param bigNumber
-     * @return
+     * @param bigNumber - BigNumber to substract to this
+     * @return a BigNumber from this - bigNumber if this > bigNumber or from bigNumber - this
      */
     public BigNumber substract(BigNumber bigNumber) { return new BigNumber(substract(this.value, bigNumber.getValue())); }
 
 
     /**
-     * Modular Substract of this with bigNumber mod mod
+     * Modular Substract of max(this,bigNumber) with min(this,bigNumber) mod m
      * Create a new Big Number whose value is
      * equal to the modular substract of the two Big Numbers'
      * value stored into the Array of 32 bits Integer
-     * @param bigNumber
-     * @param mod
-     * @return
+     * @param bigNumber - BigNumber to substract to this
+     * @param m - BigNumber modulo
+     * @return a BigNumber from this - bigNumber mod m if this > bigNumber or from bigNumber - this mod m
      */
-    public BigNumber modularSubstract(BigNumber bigNumber, BigNumber mod) {return new BigNumber(modularSub(this.value, bigNumber.getValue(), mod.getValue()));}
+    public BigNumber modularSubstract(BigNumber bigNumber, BigNumber m) {return new BigNumber(modularSub(this.value, bigNumber.getValue(), m.getValue()));}
 
     /**
      * Product of this with bigNumber
      * Create a new Big Number whose value is equal
      * to the multiplication of the two Big Numbers'
      * value stored into the Array of 32 bits Integer
-     * @param bigNumber
-     * @return
+     * @param bigNumber - BigNumber to multiply with this
+     * @return a BigNumber from this * bigNumber
      */
     public BigNumber mul(BigNumber bigNumber) { return new BigNumber(multiply(this.value, bigNumber.getValue())); }
 
 
     /**
      * Modular Multiplication of this with bigNumber mod MGY_N
-     * @param bigNumber
-     * @return
+     * @param bigNumber - BigNumber to multiply with this
+     * @return a BigNumber from this * bigNumber mod MGY_N
      */
     public BigNumber mulMontgomery(BigNumber bigNumber) { return this.multiMontgomery(bigNumber);};
+
+    /**
+     * Return GCD of this and bg
+     * @param bg - BigNumber
+     * @return a BigNumber equals to gcd(this,bg)
+     */
+    public BigNumber gcd(BigNumber bg) {return new BigNumber(binGCD(this.value,bg.value));}
 
 /****************************************************************************/
 
 
     /**
-     * Compare this Big Number to the one given in input
-     * @param bigNumber
+     * Compare this to the one given in input
+     * @param bigNumber - BigNumber to compare with
      * @return -1, 0 or 1 if this is less than, equal to or greater than bigNumber
      */
     public int compareTo (BigNumber bigNumber) { return this.compareValue(bigNumber.getValue());}
@@ -255,8 +256,8 @@ public class BigNumber {
      * Sum of two Array of 32 bits Integer
      * Given the fact radix = 10, the max carry to
      * propagate would be 1
-     * @param x
-     * @param y
+     * @param x - int array
+     * @param y - int array
      * @return sum value into Array of 32 bits Integer
      */
     public int[] add(int[] x, int[] y) {
@@ -321,10 +322,10 @@ public class BigNumber {
     /**
      * Do modular addition between two Big Numbers
      * given a Big Number value as Mod
-     * @param x
-     * @param y
-     * @param mod
-     * @return Modular sum < mod
+     * @param x - int array
+     * @param y - int array
+     * @param mod - int array which is the modulo
+     * @return a int array from x + y mod mod
      */
     public int[] modularAdd(int[] x, int[] y, int[] mod) {
 
@@ -366,9 +367,9 @@ public class BigNumber {
 
     /**
      * Substract of two Arrays of 32 bits Integer
-     * @param big
-     * @param small
-     * @return substracted value into Arrays of 32 bits Integer
+     * @param big - bigger int array
+     * @param small - smaller int array
+     * @return a int array from big - small if big > small or small - big else
      */
     public int[] substract(int[] big, int[] small) {
 
@@ -424,12 +425,12 @@ public class BigNumber {
     }
 
     /**
-     * Do modular substract between two Big Numbers
-     * given a Big Number value as Mod
-     * @param x
-     * @param y
-     * @param mod
-     * @return Modular substract < mod
+     * Do modular substract between two int Arrays
+     * given a int array value as Mod
+     * @param x - int array
+     * @param y - int array
+     * @param mod - int array which is the modulo
+     * @return a int array from big - small mod mod if big > small or small - big mod mod else
      */
     public int[] modularSub(int[] x, int[] y, int[] mod) {
 
@@ -439,10 +440,10 @@ public class BigNumber {
 
 
     /** Not very optimized...
-     * Implements mod function
-     * @param a
-     * @param mod
-     * @return a mod n
+     * Implements mod function using substracts
+     * @param a - int array
+     * @param mod - int array which is modulo
+     * @return a int array equals to a mod n
      */
     public int[] mod(int[] a, int[] mod) {
 
@@ -472,10 +473,10 @@ public class BigNumber {
 
     /**
      * Multiplication of two 32 bits Integer Array
-     * "Grade School" Algoritm
-     * @param a
-     * @param b
-     * @return product
+     * "Grade School" Algorithm
+     * @param a - int array
+     * @param b - int array
+     * @return int array equals to a * b
      */
     public int[] multiply(int[] a, int[] b) {
 
@@ -493,27 +494,28 @@ public class BigNumber {
         /** Intermediate result array **/
         long interResult[] = new long[len1+len2];
 
-        int index1 = 0;
-        int index2 = 0;
+        int indexUp = 0;
+        int indexDown = 0;
 
         for (int i =len1-1; i>=0;i--){
             long carry = 0;
-            index2 = 0;
+            indexDown = 0;
 
             for (int j=len2-1; j>=0; j--){
 
-                long product = (long) a[i] * b[j] + interResult[index1+index2] + carry;
+                long product = (long) a[i] * b[j] + interResult[indexUp+indexDown] + carry;
                 carry = product / SUPER_RADIX;
 
-                interResult[index1+index2] = product % SUPER_RADIX;
-                index2++;
+                interResult[indexUp+indexDown] = product % SUPER_RADIX;
+                indexDown++;
             }
             if (carry>0) {
-                interResult[index1+index2] += carry;
+                interResult[indexUp+indexDown] += carry;
             }
-            index1++;
+            indexUp++;
         }
         int index = interResult.length-1;
+
         while(index >=0 && interResult[index]==0) {
             index--;
         }
@@ -521,10 +523,11 @@ public class BigNumber {
             return new int[0];
         }
 
+        /** Add to the result array **/
         while(index >=0) {
             result.add((int) interResult[index--]);
         }
-        int[] temp = result.stream().mapToInt(Integer::intValue).toArray();
+        /** Return converting the ArrayList<Integer> into int[] **/
         return result.stream().mapToInt(Integer::intValue).toArray();
     }
 
@@ -533,8 +536,8 @@ public class BigNumber {
      * Return this mod mod
      * In the case where mod = 10^k !!
      * This condition is not checked !
-     * @param mod
-     * @return
+     * @param mod - BigNumber modulo, equals to 10^k
+     * @return a BigNumber from this mod mod
      */
     public BigNumber mod10(BigNumber mod) {
 
@@ -568,8 +571,10 @@ public class BigNumber {
 
     /**
      * Do this divided by 10^k
-     * @param div
-     * @return
+     * div must be equals to 10^k
+     * This condition is not checked !
+     * @param div - BigNumber equals to 10^k
+     * @return a BigNumber from this / div
      */
     public BigNumber div10(BigNumber div) {
 
@@ -613,8 +618,8 @@ public class BigNumber {
      * c = a.b mod N = C montgomeryOperator 1
      *
      * /!\ N,R,V and R² mod have a precalculated value !!
-     * @param b
-     * @return Montgomery Multiplication value into Arrays of 32 bits Integer
+     * @param b - BigNumber to do the modular multiplication with
+     * @return a BigNumber equals to this * b mod MGY_N
      */
     public BigNumber multiMontgomery(BigNumber b) {
 
@@ -637,11 +642,12 @@ public class BigNumber {
 
     /**
      * Calculate this montgomeryOperator b = this.b.r^-1 mod N
-     * @param b
-     * @param N
-     * @param R
-     * @param V
-     * @return
+     * @param b - BigNumber
+     * @param N - Constant BigNumber precalculated
+     * @param R - Constant BigNumber precalculated
+     * @param V - Constant BigNumber precalculated
+     * @see #multiMontgomery(BigNumber);
+     * @return a BigNumber equals to this * b * R^-1 mod N
      */
     public BigNumber montgomeryOperator(BigNumber b, BigNumber N,BigNumber R, BigNumber V) {
 
@@ -659,11 +665,11 @@ public class BigNumber {
     }
 
 
-    /**
+    /** (Not yet functional :( )
      * Return this^k
      * Use the algorithm Square And Multiply combined with Montgomery's reduction
-     * @param k
-     * @return
+     * @param k - BigNumber corresponding to the exponent
+     * @return a BigNumber this^k
      */
     public BigNumber pow(BigNumber k) {
 
@@ -680,10 +686,12 @@ public class BigNumber {
     }
 
 
-    /**
+    /** ( Not functional yet :( )
      * Return this^k
-     * @param k
-     * @return
+     * Note : this must have its Montgomery Representation
+     * This condition is not checked !
+     * @param k - BigNumber equals to the exponent
+     * @return a BigNumber equals to this^k
      */
     public BigNumber squareAndMultiply(BigNumber k) {
 
@@ -702,25 +710,6 @@ public class BigNumber {
             }
             return P;
         }
-
-
-    /**
-     * Returns GCD of this and bg
-     * @param bg
-     * @return
-     */
-    public BigNumber gcd(BigNumber bg) {return new BigNumber(gcd(this.value,bg.value));}
-
-    /**
-     * Returns GCD of a and b
-     * Use Euclid's Algorithm until the numbers are the same length
-     * and use binary GCD Algorithm to finc GCD
-     * @param a
-     * @param b
-     * @return
-     */
-    public int[] gcd(int[] a, int[] b) {return binGCD(a, b);}
-
 
     /**
      * Calculate GCD of a and b
@@ -741,8 +730,9 @@ public class BigNumber {
      *
      * B6. [Substract] Set t <- u - v. If t!=0, go back to B3. Otherwise the algorithm
      * terminates with u*2^k as the output.
-     * @param val
-     * @return
+     * @param u - int array
+     * @param v - int array
+     * @return a int array equals to gcd(u,v)
      */
     public int[] binGCD(int[] u, int[] v) {
         int tSign = 0;
@@ -813,10 +803,10 @@ public class BigNumber {
     }
 
     /**
-     * Calculate GCD of integers a and b
-     * @param a
-     * @param b
-     * @return
+     * Calculate GCD of Long a and b
+     * @param a - Long
+     * @param b - Long
+     * @return a int equals to gcd(a,b)
      */
     public int gcd(long a, long b) {
         if (b!=0) {
@@ -828,9 +818,10 @@ public class BigNumber {
     }
 
     /**
-     * Suppose a < MAX_INTEGER_VALUE
-     * @param a
-     * @return
+     * Convert a int[] into a Long
+     * Suppose a.value < MAX_INTEGER_VALUE
+     * @param a - int array
+     * @return a Long equals to the value of a
      */
     public long fitIntoLong(int[] a) {
         if (a.length==1) {
@@ -843,9 +834,10 @@ public class BigNumber {
     }
 
     /**
-     * Returns val rightshifted by k
-     * @param val
-     * @return
+     * Return val rightshifted by k
+     * @param val - int array to be rightshifted
+     * @param k - int equals to the number of shift to be done
+     * @return a int array equals to val>>k
      */
     public int[] rightShift(int[] val, int k) {
         int[] res = new int[val.length];
@@ -897,9 +889,10 @@ public class BigNumber {
     }
 
     /**
-     * Returns val left shifted by k
-     * @param val
-     * @return
+     * Return val left shifted by k
+     * @param val - int array to be leftshifted
+     * @param k - int equals to the number of shift to be done
+     * @return a int array equals to val<<k
      */
     public int[] leftShift(int[] val, int k) {
         int[] res = val;
@@ -910,10 +903,10 @@ public class BigNumber {
     }
 
     /**
-     * Returns val left shifted by 1
+     * Return val left shifted by 1
      * Fragmented so that the long will not be overflowed !!
-     * @param val
-     * @return
+     * @param val - int array to be leftshifted
+     * @return a int array equals to val<<1
      */
     public int[] unitaryLeftShift(int[] val) {
 
@@ -946,8 +939,8 @@ public class BigNumber {
     /**
      * Return the index of the lowest bit set in val
      * If val = 0 , -1 is returned
-     * @param val
-     * @return
+     * @param val - int array
+     * @return a int equals to the index of the lowest bit set in val
      */
     public int getLowestBitSet(int[] val) {
 
@@ -966,8 +959,9 @@ public class BigNumber {
 
     /**
      * Return non empty size of the Array
-     * @param a
-     * @return
+     * Ex : {0,12} -> length = 2 but trueSize = 1
+     * @param a - int array
+     * @return number of stacks with a value
      */
     public int trueSize(int[] a) {
         int size = a.length;
@@ -981,8 +975,8 @@ public class BigNumber {
 
     /**
      * Remove right side zeros
-     * @param str
-     * @return
+     * @param str - String
+     * @return a String without ride side zeros
      */
     public String removeZeros(String str) {
         StringBuilder sb = new StringBuilder(str);
@@ -1001,12 +995,12 @@ public class BigNumber {
 
 
     /**
-     * Returns True if a is Odd
+     * Return True if a is Odd
      * Looks at the last array's case and convert the Integer
      * stored into its Binary representation to check if the bit
      * relative to 2⁰ is set or not.
-     * @param a
-     * @return
+     * @param a - int array
+     * @return true if a is odd, false if not
      */
     public boolean isOdd(int[] a) {
         String bin = Integer.toBinaryString(a[a.length-1]);
@@ -1016,9 +1010,9 @@ public class BigNumber {
 
 
     /**
-     * Returns True is the Integer Array given is equals to zero, and False is not
-     * @param val
-     * @return
+     * Return True is the Integer Array given is equals to zero, and False is not
+     * @param val - int array
+     * @return true if val.value = 0, false if not
      */
     public boolean isZero(int[] val) {
         int len = val.length;
@@ -1031,9 +1025,9 @@ public class BigNumber {
     }
 
     /**
-     * Compare value array of this Big Number with
+     * Compare value array of this BigNumber with
      * the 32 bits Integer Array y
-     * @param y
+     * @param y - int array
      * @return -1, 0 or 1 if this is less than,
      * equal to or greater than y array
      */
@@ -1066,8 +1060,8 @@ public class BigNumber {
 
     /**
      * Compare value of two 32 bits Integer Arrays
-     * @param x
-     * @param y
+     * @param x - int array
+     * @param y - int array
      * @return -1, 0 or 1 if x is less than,
      * equal to or greater than y array
      */
@@ -1101,8 +1095,8 @@ public class BigNumber {
     /**
      * Return a concatenate String of the value based
      * on the Array of 32 bits Integer given in input
-     * @param res
-     * @return String value
+     * @param res - int array
+     * @return String value of the res array
      */
     public String toString(int[] res) {
 
@@ -1131,8 +1125,8 @@ public class BigNumber {
     /**
      * Return the string of the stack with the index i of this
      * Add the leading zeros !
-     * @param index
-     * @return
+     * @param index - int
+     * @return a string of the stack with the index i of this
      */
     public String stackToString(int index) {
         String str = "";
@@ -1148,7 +1142,7 @@ public class BigNumber {
     /**
      * Create String "0" whose length is
      * equals to the int given in input
-     * @param size
+     * @param size - int
      * @return String of size * "0"
      */
     public String makeZeros(int size) {
@@ -1160,10 +1154,18 @@ public class BigNumber {
     }
 
 
-    /** Getters **/
 
+    /**
+     * Get the value of the BigNumber
+     * @return int array of the BigNumber
+     */
     public int[] getValue() {return value;}
+
+    /**
+     * Get the string value of the BigNumber
+     * @return string value of the BigNumber
+     */
     public String getStrValue() {return strValue;}
-    public int getNbBits() {return nbBits;}
+
 
 }
