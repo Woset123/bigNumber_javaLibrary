@@ -5,6 +5,12 @@ import java.util.Collections;
 
 import static java.lang.Math.*;
 
+/**
+ * Big Numbers implementation in base 2^31 as part of ISMIN courses
+ * @author Eric
+ * @version 1.0
+ */
+
 public class BigNumBinary {
 
     /** Mask used to keep 31 bits **/
@@ -107,7 +113,7 @@ public class BigNumBinary {
     public static final BigNumBinary ONE = new BigNumBinary(new ArrayList<Integer>(Collections.nCopies(1,1)));
     /** Constant BigNumBinary N for Montgomery Multiplication **/
     public static final BigNumBinary MGY_N = new BigNumBinary(new int[]{10003716,1491196112,414886606,1167952122,1694238255,640297731,982769063,414804193,1093981874,1286150263,895784412,1542604043,1311810001,1603887403,94801236,103605104,36533097,2061487095,1085097348,621953484,1946677379,1795652458,676751585,500149201,1092513734,1269595439,215359060,460849662,1355250570,401888270,112565291,1847600491,475971065});
-    /** Constant BigNumber R = 2¹⁰²⁴ for Montgomery Multiplication **/
+    /** Constant BigNumber R = 2¹⁰²⁵ for Montgomery Multiplication **/
     public static final BigNumBinary MGY_R = new BigNumBinary(new int[]{4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
     /** Constant BigNumber R² mod N for Montgomery Multiplication **/
     public static final BigNumBinary MGY_R2modN = new BigNumBinary(new int[]{792518,1693036003,1677773903,1129898352,755697718,1451576348,844941527,1349741317,182744808,258600595,1261594476,160685081,661006668,1769241208,1129547922,507724589,1467197228,1690677089,759956681,1518700876,736745748,1436914308,468831006,805325184,986802795,994496909,954299935,2109707428,1725218273,1991487393,1455715451,1403709107,1361428340});

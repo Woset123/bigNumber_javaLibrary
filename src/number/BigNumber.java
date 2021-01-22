@@ -3,10 +3,9 @@ import java.util.ArrayList;
 import java.util.function.BiFunction;
 
 /**
- * Big Numbers implementation as part of ISMIN courses
+ * Big Numbers implementation in base 10⁹ as part of ISMIN courses
  * Handle basic operations such as sum, substract, product, modular sum, modular addition, modular multiplication
- * but also some functions as gcd or comparaisons.
- *
+ * Not very operational and benchmark are not very good :(
  * @author Eric
  * @version 1.0
  */
