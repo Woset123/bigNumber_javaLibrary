@@ -447,12 +447,12 @@ public class BigNumber {
      */
     public int[] mod(int[] a, int[] mod) {
 
-        /** Sum equals to mod **/
+        /** a equals to mod **/
         if (compareValue(a, mod)==0) {
             return ZERO.getValue();
         }
 
-        /** Sum greater than mod **/
+        /** a greater than mod **/
         while (compareValue(a,mod)==1) {
             a = substract(a, mod);
         }
@@ -466,6 +466,10 @@ public class BigNumber {
             int[] smaller = new int[lenSmall];
             System.arraycopy(a, i-1, smaller,0,lenSmall);
             a = smaller;
+        }
+        //Debug
+        if (a[0] > mod [0]) {
+            int temp = 1;
         }
         return a;
 
@@ -696,22 +700,23 @@ public class BigNumber {
     public BigNumber squareAndMultiply(BigNumber k) {
 
 
-            /** Init **/
-            BigNumber P = this;
-            BigNumber i = ONE;
 
-            while (i.compareTo(k)==-1) {
+            /** Init **/
+            BigNumber P = MGY_R.substract(MGY_N);
+            //BigNumber i = 0;
+
+            /**while (i.compareTo(k)==-1) {
                 // P montgomeryOperator P = P.P.R^-1 mod N
                 P = P.montgomeryOperator(P,MGY_N, MGY_R, MGY_V);
                 // P = A² for the first loop and so on
                 // P montgomeryOperator R = (P.P.R^-1 mod N) * R² . R^-1 mod N = P² mod N
                 P = P.montgomeryOperator(MGY_R2modN, MGY_N, MGY_R, MGY_V);
                 i = i.add(ONE);
-            }
+            }**/
             return P;
         }
 
-    /**
+    /** (Some bugs to fix.... :'( )
      * Calculate GCD of a and b
      * Algorithm B from "Art of Computer Programming Knuth vol.2" section 4.5.2
      *
@@ -1092,6 +1097,37 @@ public class BigNumber {
         return 0;
     }
 
+    public int[] toBase2(int[] val) {
+
+        int size = (int) Math.ceil((float) val.length * Math.log(10));
+        int[] res = new int[size];
+
+        int i = 0;
+        while (!isZero(val)) {
+            res[i] = val[0] % 2;
+            val = dividedBy2(val);
+            i++;
+        }
+        return res;
+    }
+
+    public int[] dividedBy2(int[] val) {
+
+        if (isZero(val) || compareValue(val,ONE.getValue())==0) {
+            return ZERO.getValue();
+        }
+        int[] res = val;
+
+        int carry = 0;
+        for (int i= val.length -1;i > -1;i--) {
+            res[i]+= carry;
+            carry = (res[i] % 2 == 1) ? 10 : 0;
+            res[i] = res[i]>>1;
+        }
+        return res;
+    }
+
+
     /**
      * Return a concatenate String of the value based
      * on the Array of 32 bits Integer given in input
@@ -1121,6 +1157,8 @@ public class BigNumber {
         str = (String.valueOf(res[0] + remainder)) + " " + str;
         return str;
     }
+
+
 
     /**
      * Return the string of the stack with the index i of this
